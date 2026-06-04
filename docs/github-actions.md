@@ -14,6 +14,10 @@ on:
     branches:
       - "**"
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   risk-check:
     name: Deterministic PR Risk Review
@@ -48,6 +52,57 @@ jobs:
             --head HEAD \
             --fail-on high
 ```
+
+## PR comment mode
+
+Pass `--github-comment` to automatically post (or update) a Markdown report as a PR comment. The bot finds any existing comment it previously left (identified by a hidden HTML marker) and updates it in place, so there is only ever one comment per PR.
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write   # required to post/update comments
+
+jobs:
+  risk-check:
+    steps:
+      # ... checkout, setup, install steps ...
+
+      - name: Run agent-pr-reviewer-lite with PR comment
+        run: |
+          pnpm agent-pr-reviewer-lite \
+            --base origin/${{ github.base_ref }} \
+            --head HEAD \
+            --format markdown \
+            --github-comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Prerequisites for PR comment mode
+
+The comment is only posted when **all** of the following are present at runtime — missing any one silently skips the comment without affecting the exit code:
+
+| Variable | Source | Purpose |
+|----------|--------|---------|
+| `GITHUB_TOKEN` | `secrets.GITHUB_TOKEN` (auto-injected) | Authenticates GitHub API calls |
+| `GITHUB_REPOSITORY` | Auto-injected by Actions | `owner/repo` to target |
+| `GITHUB_EVENT_PATH` | Auto-injected by Actions | Path to the event JSON (supplies the PR number) |
+
+The event payload must contain a `pull_request.number` field (i.e. the workflow runs on a `pull_request` trigger).
+
+### Comment format
+
+The comment is a GitHub-flavoured Markdown table topped by a hidden marker comment:
+
+```
+<!-- agent-pr-reviewer-lite -->
+## Agent PR Risk: High
+### Changed risky areas
+| Severity | File | Finding | Required review |
+...
+```
+
+The marker allows subsequent runs to find and overwrite the same comment instead of creating duplicates.
 
 ## Why `fetch-depth: 0`?
 

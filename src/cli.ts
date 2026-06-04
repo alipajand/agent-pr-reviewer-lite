@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { loadConfig, isIgnored } from "./config.js";
 import { getChangedFiles } from "./git.js";
+import { tryPostGitHubComment } from "./github.js";
 import { buildReport, shouldFail } from "./risk.js";
 import { DEFAULT_RULES, buildExtraRules } from "./rules.js";
 import { renderText } from "./reporters/text.js";
@@ -35,15 +36,13 @@ async function main() {
     .name("agent-pr-reviewer-lite")
     .description("Deterministic PR risk reviewer for agent-generated code changes")
     .version("0.1.0")
-    // --config is optional; if omitted, auto-discover from cwd
     .option("--config <path>", "Path to config file (default: agent-pr-reviewer-lite.config.json in cwd)")
-    // --base and --fail-on intentionally have no Commander default so config values win
     .option("--base <ref>", "Base git ref to compare from")
     .option("--head <ref>", "Head git ref to compare to", "HEAD")
     .option("--format <format>", "Output format: text, json, or markdown", "text")
     .option("--fail-on <level>", "Exit with code 1 when risk >= this level (low|medium|high)")
+    .option("--github-comment", "Post or update a PR comment with the markdown report (requires GITHUB_TOKEN, GITHUB_REPOSITORY, GITHUB_EVENT_PATH)")
     .action(async (opts) => {
-      // Load config (throws on parse errors; returns null when file absent)
       let config = null;
       try {
         config = loadConfig(opts.config as string | undefined);
@@ -53,7 +52,6 @@ async function main() {
         process.exit(2);
       }
 
-      // CLI flags > config values > built-in defaults
       const options: CliOptions = {
         base: (opts.base as string | undefined) ?? config?.base ?? "main",
         head: opts.head as string,
@@ -78,7 +76,6 @@ async function main() {
         process.exit(2);
       }
 
-      // Apply ignore patterns before building the report
       const files = ignorePatterns.length > 0
         ? allFiles.filter((f) => !isIgnored(f.path, ignorePatterns))
         : allFiles;
@@ -91,6 +88,7 @@ async function main() {
         result: failed ? "failed" : "passed",
       };
 
+      // Always render the requested format to stdout
       if (options.format === "json") {
         console.log(renderJson(report, renderOpts));
       } else if (options.format === "markdown") {
@@ -99,6 +97,19 @@ async function main() {
         console.log(renderText(report, renderOpts));
       }
 
+      // Optionally post/update a PR comment with the markdown report
+      if (opts.githubComment) {
+        const md = renderMarkdown(report, renderOpts);
+        try {
+          await tryPostGitHubComment(md);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`Warning: Failed to post GitHub comment: ${msg}`);
+          // Do not exit — comment failure must not override --fail-on behaviour
+        }
+      }
+
+      // --fail-on controls the exit code, not the comment result
       if (failed) {
         process.exit(1);
       }
