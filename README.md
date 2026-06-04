@@ -105,6 +105,22 @@ CI result:
   "findingCount": 3,
   "findings": [
     {
+      "id": "migration-changed",
+      "label": "Database migration changed",
+      "severity": "high",
+      "file": "migrations/0012_add_tenant_rls.sql",
+      "reason": "Migration file 'migrations/0012_add_tenant_rls.sql' was added",
+      "requiredReview": "database migration"
+    },
+    {
+      "id": "package-lock-changed",
+      "label": "Lockfile changed",
+      "severity": "medium",
+      "file": "pnpm-lock.yaml",
+      "reason": "Lockfile 'pnpm-lock.yaml' was added — verify dependency resolution is correct",
+      "requiredReview": "lockfile/dependency resolution"
+    },
+    {
       "id": "auth-file-touched",
       "label": "Auth / session file touched",
       "severity": "high",
@@ -231,7 +247,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - uses: pnpm/action-setup@v4
 
