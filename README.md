@@ -62,6 +62,21 @@ CLI flags always override config file values.
 | `dependency-change` | medium | `package.json`, lock files, `requirements.txt`, etc. |
 | `bulk-deletion` | medium | Any deleted file |
 
+## CI / GitHub Actions
+
+Add `agent-pr-reviewer-lite` as a PR check in one step. See **[docs/github-actions.md](docs/github-actions.md)** for the full workflow, fail-threshold options, JSON output, and config-file usage.
+
+Quick example:
+
+```yaml
+- name: Run agent-pr-reviewer-lite
+  run: |
+    pnpm agent-pr-reviewer-lite \
+      --base origin/${{ github.base_ref }} \
+      --head HEAD \
+      --fail-on high
+```
+
 ## Configuration
 
 `agent-pr-reviewer-lite` is zero-config by default. To customize behaviour, create `agent-pr-reviewer-lite.config.json` in your project root (or pass `--config <path>`).

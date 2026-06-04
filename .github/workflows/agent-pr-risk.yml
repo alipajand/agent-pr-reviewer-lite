@@ -1,0 +1,40 @@
+name: Agent PR Risk Check
+
+on:
+  pull_request:
+    branches:
+      - "**"
+
+jobs:
+  risk-check:
+    name: Deterministic PR Risk Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Run agent-pr-reviewer-lite
+        run: |
+          pnpm agent-pr-reviewer-lite \
+            --base origin/${{ github.base_ref }} \
+            --head HEAD \
+            --fail-on high
