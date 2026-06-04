@@ -1,0 +1,101 @@
+{
+  "base": "main",
+  "failOn": "high",
+  "ignore": [
+    "docs/**",
+    "README.md",
+    "CHANGELOG.md",
+    "**/*.md"
+  ],
+  "extraRiskPaths": [
+    {
+      "id": "ledgerguard-document-ingestion",
+      "label": "Document ingestion workflow changed",
+      "severity": "high",
+      "patterns": [
+        "apps/web/app/**/upload/**",
+        "apps/web/components/**/upload/**",
+        "apps/api/**/documents/**",
+        "apps/api/**/extractions/**",
+        "workers/**/ocr/**",
+        "workers/**/extraction/**"
+      ],
+      "requiredReview": "document ingestion/extraction"
+    },
+    {
+      "id": "ledgerguard-verification",
+      "label": "Human verification workflow changed",
+      "severity": "high",
+      "patterns": [
+        "apps/web/app/**/review/**",
+        "apps/web/app/**/verification/**",
+        "apps/web/components/**/review/**",
+        "apps/api/**/verification/**"
+      ],
+      "requiredReview": "human verification workflow"
+    },
+    {
+      "id": "ledgerguard-renewals",
+      "label": "Renewals workflow changed",
+      "severity": "high",
+      "patterns": [
+        "apps/web/app/**/renewals/**",
+        "apps/web/components/**/renewals/**",
+        "apps/api/**/renewals/**",
+        "packages/**/renewals/**"
+      ],
+      "requiredReview": "renewals workflow"
+    },
+    {
+      "id": "ledgerguard-commitments-ledger",
+      "label": "Commitments ledger changed",
+      "severity": "high",
+      "patterns": [
+        "apps/web/app/**/commitments/**",
+        "apps/web/components/**/commitments/**",
+        "apps/api/**/commitments/**",
+        "packages/**/commitments/**"
+      ],
+      "requiredReview": "commitments ledger"
+    },
+    {
+      "id": "ledgerguard-normalization",
+      "label": "Currency normalization changed",
+      "severity": "high",
+      "patterns": [
+        "apps/api/**/currency/**",
+        "apps/api/**/normalization/**",
+        "packages/**/currency/**",
+        "packages/**/normalization/**",
+        "apps/web/**/money/**"
+      ],
+      "requiredReview": "currency normalization"
+    },
+    {
+      "id": "ledgerguard-billing-plans",
+      "label": "LedgerGuard pricing or billing plan changed",
+      "severity": "high",
+      "patterns": [
+        "apps/web/app/**/pricing/**",
+        "apps/web/components/**/pricing/**",
+        "apps/api/**/billing/**",
+        "apps/api/**/stripe/**",
+        "packages/**/plans/**"
+      ],
+      "requiredReview": "pricing/billing plans"
+    },
+    {
+      "id": "ledgerguard-rls-policy",
+      "label": "Supabase RLS or tenant isolation changed",
+      "severity": "high",
+      "patterns": [
+        "supabase/migrations/**",
+        "supabase/policies/**",
+        "apps/api/**/tenant/**",
+        "packages/**/tenant/**",
+        "packages/**/rls/**"
+      ],
+      "requiredReview": "tenant isolation/RLS"
+    }
+  ]
+}

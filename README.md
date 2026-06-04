@@ -62,6 +62,10 @@ CLI flags always override config file values.
 | `dependency-change` | medium | `package.json`, lock files, `requirements.txt`, etc. |
 | `bulk-deletion` | medium | Any deleted file |
 
+## LedgerGuard example
+
+A strict preset config tailored for LedgerGuard (contract ingestion, tenant isolation, renewals, commitments ledger, currency normalization, and billing) is available in [`examples/ledgerguard`](examples/ledgerguard). Copy it to your repo root and the tool picks it up automatically.
+
 ## CI / GitHub Actions
 
 Add `agent-pr-reviewer-lite` as a PR check in one step. See **[docs/github-actions.md](docs/github-actions.md)** for the full workflow, fail-threshold options, JSON output, and config-file usage.
