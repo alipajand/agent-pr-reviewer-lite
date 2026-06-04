@@ -1,57 +1,125 @@
 # LedgerGuard — agent-pr-reviewer-lite preset
 
-This is a strict preset config for **LedgerGuard**, a platform that handles contract document ingestion, tenant data, financial commitments, billing, and renewals.
+This directory contains a ready-to-use, strict configuration of `agent-pr-reviewer-lite` for the LedgerGuard application (contract ingestion, tenant isolation, renewals, commitment ledger, currency normalization, and billing).
 
-## Why this config is intentionally strict
+---
 
-LedgerGuard operates in a domain where a silent regression can cause real financial exposure:
+## Installation status
 
-- **Contract documents** are ingested, parsed via OCR, and verified by human reviewers. Any bug in the upload, extraction, or verification flow can corrupt data that drives business decisions.
-- **Tenant isolation** is enforced by Supabase Row-Level Security (RLS) policies. A missing or incorrect policy can expose one customer's data to another.
-- **Commitments ledger** tracks financial obligations. A logic error here directly affects reported numbers and downstream billing.
-- **Renewals workflow** drives revenue. Silent failures mean missed renewals or incorrect pricing applied at renewal time.
-- **Currency normalization** converts foreign amounts before they enter the ledger. Rounding or exchange-rate bugs compound over time and are hard to audit after the fact.
-- **Billing plans and pricing** are high-visibility surfaces — a wrong price or plan change goes straight to customers.
+> **TODO — package not yet published.**
+>
+> `agent-pr-reviewer-lite` has not been released to the npm registry yet.
+> Once it is published, follow the steps below to integrate it into LedgerGuard.
 
-For these reasons, every one of the extra risk rules in this config is set to `"severity": "high"` and requires a named human reviewer before merge.
+---
 
-## Usage
+## Integration steps (run once the package is published)
 
-Copy `agent-pr-reviewer-lite.config.json` from this directory into your LedgerGuard repo root:
+### 1. Install as a dev dependency
 
 ```bash
-cp examples/ledgerguard/agent-pr-reviewer-lite.config.json ./agent-pr-reviewer-lite.config.json
+# in the LedgerGuard repository root
+pnpm add -D agent-pr-reviewer-lite
 ```
 
-Then run the checker (the config is auto-discovered):
+### 2. Copy the config file
 
 ```bash
-pnpm agent-pr-reviewer-lite --base main
+cp examples/ledgerguard/agent-pr-reviewer-lite.config.json agent-pr-reviewer-lite.config.json
 ```
 
-Or in GitHub Actions:
+The tool auto-discovers `agent-pr-reviewer-lite.config.json` in the working directory. No `--config` flag is needed.
+
+### 3. Add the package script
+
+Add this to `package.json` (see `package.json.snippet` in this directory for the full snippet):
+
+```json
+{
+  "scripts": {
+    "pr:risk": "agent-pr-reviewer-lite --base main --head HEAD --fail-on high"
+  }
+}
+```
+
+### 4. Add the GitHub Actions workflow
 
 ```bash
-pnpm agent-pr-reviewer-lite \
-  --base origin/${{ github.base_ref }} \
-  --head HEAD \
-  --fail-on high
+mkdir -p .github/workflows
+cp examples/ledgerguard/.github/workflows/agent-pr-risk.yml .github/workflows/agent-pr-risk.yml
 ```
 
-## What this config adds on top of built-in rules
+### 5. Verify locally
 
-The built-in rules already catch auth, security, migrations, lockfile changes, and dependency additions. This preset layers in seven LedgerGuard-specific high-severity rules:
+```bash
+pnpm install
+pnpm pr:risk
+```
 
-| Rule ID | Trigger paths | Required reviewer |
-|---------|--------------|-------------------|
-| `ledgerguard-document-ingestion` | `upload/`, `documents/`, `extractions/`, OCR/extraction workers | document ingestion/extraction |
-| `ledgerguard-verification` | `review/`, `verification/` under web and API | human verification workflow |
-| `ledgerguard-renewals` | `renewals/` across web, API, and packages | renewals workflow |
-| `ledgerguard-commitments-ledger` | `commitments/` across web, API, and packages | commitments ledger |
-| `ledgerguard-normalization` | `currency/`, `normalization/`, `money/` | currency normalization |
-| `ledgerguard-billing-plans` | `pricing/`, `billing/`, `stripe/`, `plans/` | pricing/billing plans |
-| `ledgerguard-rls-policy` | `supabase/migrations/`, `supabase/policies/`, `tenant/`, `rls/` | tenant isolation/RLS |
+---
 
-## Ignore patterns
+## Config file overview
 
-Markdown files (`**/*.md`), `docs/**`, `README.md`, and `CHANGELOG.md` are excluded from all rules. Documentation-only PRs will always pass with zero risk findings.
+`agent-pr-reviewer-lite.config.json` extends the 11 built-in rules with 7 high-severity LedgerGuard-specific rules:
+
+| Rule ID | Trigger paths | Required review |
+|---------|---------------|-----------------|
+| `ledgerguard-document-ingestion` | `**/upload/**`, `**/documents/**`, `**/extractions/**`, `**/ocr/**` | document ingestion/extraction |
+| `ledgerguard-verification` | `**/review/**`, `**/verification/**` | human verification workflow |
+| `ledgerguard-renewals` | `**/renewals/**` | renewals workflow |
+| `ledgerguard-commitments-ledger` | `**/commitments/**` | commitments ledger |
+| `ledgerguard-normalization` | `**/currency/**`, `**/normalization/**`, `**/money/**` | currency normalization |
+| `ledgerguard-billing-plans` | `**/pricing/**`, `**/billing/**`, `**/stripe/**`, `**/plans/**` | pricing/billing plans |
+| `ledgerguard-rls-policy` | `supabase/migrations/**`, `supabase/policies/**`, `**/tenant/**`, `**/rls/**` | tenant isolation/RLS |
+
+All 7 are `severity: "high"` and will cause the CI job to fail (`--fail-on high`).
+
+Markdown and documentation files are ignored via the `ignore` config field so doc-only PRs pass without review gates.
+
+---
+
+## Why every rule is high severity
+
+| Domain | Risk |
+|--------|------|
+| Document ingestion / extraction | Corrupted parsing loses contract data permanently |
+| Human verification | Bypassing verification allows unreviewed data into the ledger |
+| Renewals | Incorrect renewal logic mischarges customers or misses deadlines |
+| Commitments ledger | Ledger corruption is a financial and audit integrity issue |
+| Currency normalization | Rounding or FX errors propagate silently into financial records |
+| Pricing / billing plans | Wrong prices affect revenue; Stripe webhook bugs cause double charges |
+| Supabase RLS / tenant isolation | A broken RLS policy leaks one tenant's data to another |
+
+---
+
+## CI workflow behaviour
+
+The workflow in `.github/workflows/agent-pr-risk.yml`:
+
+- Runs on every pull request to any branch
+- Fails the check (`exit 1`) only when overall risk is **high** — meaning medium-risk findings (lockfiles, generated files, public routes, pricing copy) produce a warning comment but do **not** block the PR
+- Posts (or updates) a Markdown report as a PR comment via `--github-comment`
+- Requires `permissions: pull-requests: write` (set in the workflow file)
+- Does **not** touch any production application code
+
+### Exit codes in CI
+
+| Code | Meaning |
+|------|---------|
+| `0` | No high-risk findings — PR can proceed |
+| `1` | High-risk finding detected — PR is blocked pending human review |
+| `2` | Tool/config/git error — investigate before merging |
+
+---
+
+## Files in this directory
+
+```
+examples/ledgerguard/
+  agent-pr-reviewer-lite.config.json   # Strict LedgerGuard config (copy to repo root)
+  package.json.snippet                 # package.json additions (devDependency + pr:risk script)
+  .github/
+    workflows/
+      agent-pr-risk.yml                # GitHub Actions workflow (copy to .github/workflows/)
+  README.md                            # This file
+```

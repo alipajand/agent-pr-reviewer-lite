@@ -1,0 +1,66 @@
+# Copy this file to .github/workflows/agent-pr-risk.yml in the LedgerGuard repository.
+#
+# Prerequisites:
+#   1. agent-pr-reviewer-lite must be published to npm (or your private registry).
+#   2. Add it as a dev dependency:
+#        pnpm add -D agent-pr-reviewer-lite
+#   3. Copy examples/ledgerguard/agent-pr-reviewer-lite.config.json to the repo root.
+#   4. Add the pr:risk script to package.json (see examples/ledgerguard/package.json.snippet).
+
+name: Agent PR Risk Check
+
+on:
+  pull_request:
+    branches:
+      - "**"
+
+permissions:
+  contents: read
+  pull-requests: write   # required to post/update the PR comment
+
+jobs:
+  risk-check:
+    name: Deterministic PR Risk Review
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository (full history required for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Fetch base branch
+        run: git fetch origin ${{ github.base_ref }}
+
+      - name: Run agent-pr-reviewer-lite
+        run: |
+          pnpm agent-pr-reviewer-lite \
+            --base origin/${{ github.base_ref }} \
+            --head HEAD \
+            --format markdown \
+            --fail-on high \
+            --github-comment
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Exit code behaviour:
+        #   0 — risk below high (workflow passes)
+        #   1 — high risk found (workflow fails, blocks merge)
+        #   2 — tool/config/git error (also blocks merge)
+        #
+        # --fail-on high means medium-risk areas (lockfiles, generated files,
+        # public routes, pricing copy) produce a warning comment but do NOT
+        # block the PR. Only auth, billing, migration, security, or deleted
+        # tests trigger a CI failure.
