@@ -2,9 +2,8 @@ name: CI
 
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
-    branches: ["**"]
 
 jobs:
   ci:
@@ -17,10 +16,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Node.js 22
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
