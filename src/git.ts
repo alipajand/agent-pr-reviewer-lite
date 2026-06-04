@@ -1,8 +1,24 @@
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import type { ChangedFile, ChangeStatus } from "./types.js";
 
 /** Files whose diff content we want to capture for content-inspection rules. */
 const CONTENT_INSPECT_FILES = new Set(["package.json"]);
+
+/**
+ * Run git with an explicit args array so that base/head/filePath values are
+ * never interpreted by a shell. Each element is passed directly to the git
+ * process via execve — no quoting, escaping, or shell-injection risk.
+ */
+function runGit(args: string[]): { stdout: string; stderr: string; ok: boolean } {
+  const result = spawnSync("git", args, { encoding: "utf8" });
+  if (result.error) {
+    return { stdout: "", stderr: result.error.message, ok: false };
+  }
+  if (result.status !== 0) {
+    return { stdout: "", stderr: result.stderr ?? "", ok: false };
+  }
+  return { stdout: result.stdout, stderr: "", ok: true };
+}
 
 export function parseNameStatus(line: string): ChangedFile | null {
   const parts = line.split("\t");
@@ -43,16 +59,12 @@ export function parseNameStatus(line: string): ChangedFile | null {
  * specific file, excluding the diff header (`+++` lines).
  */
 function getAddedLines(base: string, head: string, filePath: string): string[] {
-  const command = `git diff ${base}...${head} -- ${JSON.stringify(filePath)}`;
-  let output: string;
-  try {
-    output = execSync(command, { encoding: "utf8" });
-  } catch {
-    return [];
-  }
+  // filePath is a separate argument — no shell, no escaping needed
+  const { stdout, ok } = runGit(["diff", `${base}...${head}`, "--", filePath]);
+  if (!ok) return [];
 
   const added: string[] = [];
-  for (const line of output.split("\n")) {
+  for (const line of stdout.split("\n")) {
     if (line.startsWith("+") && !line.startsWith("+++")) {
       added.push(line.slice(1));
     }
@@ -60,18 +72,28 @@ function getAddedLines(base: string, head: string, filePath: string): string[] {
   return added;
 }
 
-export function getChangedFiles(base: string, head: string): ChangedFile[] {
-  const command = `git diff --name-status ${base}...${head}`;
+/**
+ * Reject refs containing null bytes before they reach spawnSync, which would
+ * throw its own lower-level error. Keeps the error message consistent.
+ */
+function assertNoNullBytes(value: string, name: string): void {
+  if (value.includes("\x00")) {
+    throw new Error(`Failed to run git diff: ${name} contains a null byte`);
+  }
+}
 
-  let output: string;
-  try {
-    output = execSync(command, { encoding: "utf8" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    throw new Error(`Failed to run git diff: ${message}`);
+export function getChangedFiles(base: string, head: string): ChangedFile[] {
+  assertNoNullBytes(base, "--base");
+  assertNoNullBytes(head, "--head");
+
+  // base and head are passed as a single argument, not interpolated into a
+  // shell string, so shell metacharacters in either value are inert.
+  const { stdout, stderr, ok } = runGit(["diff", "--name-status", `${base}...${head}`]);
+  if (!ok) {
+    throw new Error(`Failed to run git diff: ${stderr}`);
   }
 
-  const lines = output.trim().split("\n").filter(Boolean);
+  const lines = stdout.trim().split("\n").filter(Boolean);
   const files: ChangedFile[] = [];
 
   for (const line of lines) {
