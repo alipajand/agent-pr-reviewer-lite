@@ -4,6 +4,8 @@ export type ChangedFile = {
   path: string;
   previousPath?: string;
   status: ChangeStatus;
+  /** Added lines from the diff (lines starting with +, stripped of the leading +). */
+  addedLines?: string[];
 };
 
 export type RiskLevel = "low" | "medium" | "high";
