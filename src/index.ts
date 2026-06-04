@@ -1,5 +1,6 @@
 export { getChangedFiles } from "./git.js";
-export { applyRules, DEFAULT_RULES } from "./rules.js";
+export { loadConfig, isIgnored, globToRegex, CONFIG_FILE_NAME } from "./config.js";
+export { applyRules, DEFAULT_RULES, buildExtraRules } from "./rules.js";
 export type { Rule } from "./rules.js";
 export { buildReport, shouldFail } from "./risk.js";
 export { renderText } from "./reporters/text.js";
@@ -14,5 +15,7 @@ export type {
   CliOptions,
   RenderOptions,
   JsonReport,
+  Config,
+  ExtraRiskPath,
 } from "./types.js";
 export { RISK_LEVEL_ORDER } from "./types.js";

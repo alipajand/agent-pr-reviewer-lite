@@ -42,6 +42,23 @@ export type RenderOptions = {
   result: "passed" | "failed";
 };
 
+/** A single entry in the extraRiskPaths config array. */
+export type ExtraRiskPath = {
+  id: string;
+  label: string;
+  severity: RiskLevel;
+  patterns: string[];
+  requiredReview?: string;
+};
+
+/** Shape of agent-pr-reviewer-lite.config.json. All fields are optional. */
+export type Config = {
+  base?: string;
+  failOn?: RiskLevel;
+  ignore?: string[];
+  extraRiskPaths?: ExtraRiskPath[];
+};
+
 /** Exact JSON output shape exposed to callers / CI systems. */
 export type JsonReport = {
   risk: RiskLevel;

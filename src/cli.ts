@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { loadConfig, isIgnored } from "./config.js";
 import { getChangedFiles } from "./git.js";
 import { buildReport, shouldFail } from "./risk.js";
+import { DEFAULT_RULES, buildExtraRules } from "./rules.js";
 import { renderText } from "./reporters/text.js";
 import { renderJson } from "./reporters/json.js";
 import type { CliOptions, OutputFormat, RenderOptions, RiskLevel } from "./types.js";
@@ -32,28 +34,55 @@ async function main() {
     .name("agent-pr-reviewer-lite")
     .description("Deterministic PR risk reviewer for agent-generated code changes")
     .version("0.1.0")
-    .option("--base <ref>", "Base git ref to compare from", "main")
+    // --config is optional; if omitted, auto-discover from cwd
+    .option("--config <path>", "Path to config file (default: agent-pr-reviewer-lite.config.json in cwd)")
+    // --base and --fail-on intentionally have no Commander default so config values win
+    .option("--base <ref>", "Base git ref to compare from")
     .option("--head <ref>", "Head git ref to compare to", "HEAD")
     .option("--format <format>", "Output format: text or json", "text")
-    .option("--fail-on <level>", "Exit with code 1 when risk >= this level (low|medium|high)", "high")
+    .option("--fail-on <level>", "Exit with code 1 when risk >= this level (low|medium|high)")
     .action(async (opts) => {
+      // Load config (throws on parse errors; returns null when file absent)
+      let config = null;
+      try {
+        config = loadConfig(opts.config as string | undefined);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Error: ${msg}`);
+        process.exit(2);
+      }
+
+      // CLI flags > config values > built-in defaults
       const options: CliOptions = {
-        base: opts.base as string,
+        base: (opts.base as string | undefined) ?? config?.base ?? "main",
         head: opts.head as string,
         format: assertOutputFormat(opts.format as string),
-        failOn: assertRiskLevel(opts.failOn as string),
+        failOn: assertRiskLevel(
+          (opts.failOn as string | undefined) ?? config?.failOn ?? "high"
+        ),
       };
 
-      let files;
+      const ignorePatterns = config?.ignore ?? [];
+      const extraRules = config?.extraRiskPaths
+        ? buildExtraRules(config.extraRiskPaths)
+        : [];
+      const rules = [...DEFAULT_RULES, ...extraRules];
+
+      let allFiles;
       try {
-        files = getChangedFiles(options.base, options.head);
+        allFiles = getChangedFiles(options.base, options.head);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`Error: ${message}`);
         process.exit(2);
       }
 
-      const report = buildReport(options.base, options.head, files);
+      // Apply ignore patterns before building the report
+      const files = ignorePatterns.length > 0
+        ? allFiles.filter((f) => !isIgnored(f.path, ignorePatterns))
+        : allFiles;
+
+      const report = buildReport(options.base, options.head, files, rules);
       const failed = shouldFail(report.overallRisk, options.failOn);
 
       const renderOpts: RenderOptions = {

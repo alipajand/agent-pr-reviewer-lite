@@ -1,4 +1,5 @@
-import type { ChangedFile, RiskFinding, RiskLevel } from "./types.js";
+import { globToRegex } from "./config.js";
+import type { ChangedFile, ExtraRiskPath, RiskFinding, RiskLevel } from "./types.js";
 
 export type Rule = {
   id: string;
@@ -366,3 +367,29 @@ export function applyRules(
 }
 
 export { extractAddedDependencies };
+
+// ---------------------------------------------------------------------------
+// Extra rules from config
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert `extraRiskPaths` config entries into Rule objects that behave
+ * identically to built-in path rules.
+ */
+export function buildExtraRules(extraRiskPaths: ExtraRiskPath[]): Rule[] {
+  return extraRiskPaths.map((erp) => {
+    const regexes = erp.patterns.map(globToRegex);
+    return {
+      id: erp.id,
+      label: erp.label,
+      severity: erp.severity,
+      requiredReview: erp.requiredReview,
+      match(file: ChangedFile): string | null {
+        if (regexes.some((r) => r.test(file.path))) {
+          return `File '${file.path}' matches configured risk pattern for '${erp.label}'`;
+        }
+        return null;
+      },
+    };
+  });
+}

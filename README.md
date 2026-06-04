@@ -34,10 +34,13 @@ pnpm agent-pr-reviewer-lite --base origin/main --head feature/my-branch --format
 
 | Flag | Default | Description |
 |------|---------|-------------|
+| `--config <path>` | auto-discover | Path to config file |
 | `--base <ref>` | `main` | Base git ref to compare from |
 | `--head <ref>` | `HEAD` | Head git ref to compare to |
 | `--format <text\|json>` | `text` | Output format |
 | `--fail-on <low\|medium\|high>` | `high` | Exit code 1 when overall risk ≥ this level |
+
+CLI flags always override config file values.
 
 ### Exit Codes
 
@@ -58,6 +61,62 @@ pnpm agent-pr-reviewer-lite --base origin/main --head feature/my-branch --format
 | `database-migration` | high | SQL files, `migration/`, `schema.`, `db/` directories |
 | `dependency-change` | medium | `package.json`, lock files, `requirements.txt`, etc. |
 | `bulk-deletion` | medium | Any deleted file |
+
+## Configuration
+
+`agent-pr-reviewer-lite` is zero-config by default. To customize behaviour, create `agent-pr-reviewer-lite.config.json` in your project root (or pass `--config <path>`).
+
+```json
+{
+  "base": "main",
+  "failOn": "high",
+  "ignore": [
+    "docs/**",
+    "README.md"
+  ],
+  "extraRiskPaths": [
+    {
+      "id": "ledgerguard-renewals",
+      "label": "Renewals workflow changed",
+      "severity": "high",
+      "patterns": [
+        "apps/web/app/**/renewals/**",
+        "apps/api/**/renewals/**"
+      ],
+      "requiredReview": "renewals workflow"
+    }
+  ]
+}
+```
+
+### Config fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `base` | `string` | Default base ref (overridden by `--base`) |
+| `failOn` | `"low" \| "medium" \| "high"` | Default fail threshold (overridden by `--fail-on`) |
+| `ignore` | `string[]` | Glob patterns — matched files are excluded from all rules |
+| `extraRiskPaths` | `ExtraRiskPath[]` | Custom path-based rules appended to the built-in set |
+
+### `extraRiskPaths` entries
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `id` | yes | Unique rule identifier (appears in JSON output) |
+| `label` | yes | Short human-readable label |
+| `severity` | yes | `"low"`, `"medium"`, or `"high"` |
+| `patterns` | yes | Glob patterns — file matches any one to trigger the rule |
+| `requiredReview` | no | Label shown in the "Required human review" section |
+
+### Glob pattern syntax
+
+| Syntax | Matches |
+|--------|---------|
+| `*` | Any characters except `/` |
+| `**` | Any characters including `/` (zero or more path segments) |
+| `**/foo` | `foo` at any directory depth |
+| `docs/**` | Everything under `docs/` |
+| `src/**/*.ts` | All `.ts` files under `src/` |
 
 ## Development
 
