@@ -101,7 +101,8 @@ const LOCKFILE_PATHS = [
 ];
 
 const GENERATED_PATHS = [
-  /generated/i,
+  // "generated" as a standalone path segment or filename base (not inside "not-generated")
+  /(?:^|\/)generated(?:[/.]|$)/i,
   /__generated__/,
   /\.generated\.tsx?$/,
   /\.gen\.tsx?$/,

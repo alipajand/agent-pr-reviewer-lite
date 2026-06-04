@@ -1,4 +1,4 @@
-export { getChangedFiles } from "./git.js";
+export { getChangedFiles, parseNameStatus } from "./git.js";
 export { loadConfig, isIgnored, globToRegex, CONFIG_FILE_NAME } from "./config.js";
 export { applyRules, DEFAULT_RULES, buildExtraRules } from "./rules.js";
 export type { Rule } from "./rules.js";

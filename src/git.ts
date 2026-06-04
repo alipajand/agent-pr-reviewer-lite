@@ -4,7 +4,7 @@ import type { ChangedFile, ChangeStatus } from "./types.js";
 /** Files whose diff content we want to capture for content-inspection rules. */
 const CONTENT_INSPECT_FILES = new Set(["package.json"]);
 
-function parseNameStatus(line: string): ChangedFile | null {
+export function parseNameStatus(line: string): ChangedFile | null {
   const parts = line.split("\t");
   if (parts.length < 2) return null;
 
