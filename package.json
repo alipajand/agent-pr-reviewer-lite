@@ -1,7 +1,7 @@
 {
   "name": "agent-pr-reviewer-lite",
   "version": "0.1.0",
-  "description": "Deterministic local/CI tool that reviews git diffs for agent-generated PR risk",
+  "description": "Deterministic PR risk reviewer for agent-generated code changes.",
   "type": "module",
   "bin": {
     "agent-pr-reviewer-lite": "./dist/cli.js"
@@ -13,7 +13,15 @@
     "test:watch": "vitest",
     "agent-pr-reviewer-lite": "tsx src/cli.ts"
   },
-  "keywords": ["ai", "pr-review", "git", "cli", "risk"],
+  "keywords": [
+    "agent",
+    "ai-code",
+    "pull-request",
+    "ci",
+    "risk",
+    "security",
+    "static-analysis"
+  ],
   "license": "MIT",
   "dependencies": {
     "commander": "^12.1.0"
