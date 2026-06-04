@@ -3,15 +3,26 @@
   "version": "0.1.0",
   "description": "Deterministic PR risk reviewer for agent-generated code changes.",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "agent-pr-reviewer-lite": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "agent-pr-reviewer-lite": "tsx src/cli.ts",
     "pr:risk": "tsx src/cli.ts --base main --head HEAD --fail-on high"
   },
   "keywords": [
@@ -24,6 +35,14 @@
     "static-analysis"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alipajand/agent-pr-reviewer-lite.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alipajand/agent-pr-reviewer-lite/issues"
+  },
+  "homepage": "https://github.com/alipajand/agent-pr-reviewer-lite#readme",
   "dependencies": {
     "commander": "^15.0.0"
   },
