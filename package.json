@@ -21,6 +21,10 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests --ext .ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "pr:risk": "tsx src/cli.ts --base main --head HEAD --fail-on high"

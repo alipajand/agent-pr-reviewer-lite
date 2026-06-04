@@ -1,0 +1,53 @@
+# agent-pr-reviewer-lite — Cursor rules
+
+Deterministic PR risk reviewer for agent-generated code changes.
+No LLM calls, no telemetry, no auth. Fully offline, filesystem + git only.
+
+## Before starting
+
+Read `AGENTS.md` and `docs/ARCHITECTURE.md` before any non-trivial change.
+
+## Module boundaries
+
+| Module | Responsibility |
+|--------|----------------|
+| `src/rules.ts` | Risk rules — deterministic, test-covered, pure functions |
+| `src/risk.ts` | Report builder (`buildReport`, `shouldFail`) |
+| `src/git.ts` | Git diff parser — no shell injection |
+| `src/config.ts` | Config loading + glob-to-regex |
+| `src/github.ts` | GitHub PR comment via fetch — human review required |
+| `src/reporters/` | Text / JSON / Markdown output formatters |
+| `src/types.ts` | All shared types and `RISK_LEVEL_ORDER` |
+| `tests/` | Vitest specs — one per module minimum |
+
+## Rule authoring
+
+- `match(file: ChangedFile): RiskFinding[] | string | null` — no side effects
+- Use `matchesAny(path, regexes)` for pattern matching
+- Use the `finding(rule, file, reason)` helper for single findings
+- Every new rule needs: positive match, negative match, edge case tests
+
+## Safe git
+
+- `git` called via `execFileSync` with argument array — never a shell string
+- Null-byte validation on all ref inputs (`assertNoNullBytes`)
+- Never add shell string concatenation in `src/git.ts`
+
+## Testing
+
+- `pnpm test` must pass before finishing any task
+- `pnpm typecheck` must pass
+- Isolate tests — no real git repos, no network calls
+- Do not skip or disable tests
+
+## Commit style
+
+Conventional commits: `feat:`, `fix:`, `improve:`, `docs:`, `test:`, `refactor:`, `chore:`.
+No emoji. Summary ≤ 72 chars. Body explains why.
+
+## Forbidden without approval
+
+- Breaking CLI flag names, exit codes, or JSON output schema
+- Adding external dependencies without justification
+- Changing `src/github.ts` (network path)
+- Disabling tests or skipping CI

@@ -1,0 +1,340 @@
+{
+  "entries": [
+    {
+      "timestamp": "2026-06-04T21:09:20.024Z",
+      "score": 46,
+      "categories": [
+        {
+          "id": "agent-instructions",
+          "label": "Agent instructions",
+          "score": 0,
+          "maxScore": 20
+        },
+        {
+          "id": "architecture",
+          "label": "Project architecture clarity",
+          "score": 5,
+          "maxScore": 15
+        },
+        {
+          "id": "workflow",
+          "label": "Developer workflow clarity",
+          "score": 8,
+          "maxScore": 15
+        },
+        {
+          "id": "testing",
+          "label": "Testing and validation",
+          "score": 15,
+          "maxScore": 15
+        },
+        {
+          "id": "safety",
+          "label": "Safety boundaries",
+          "score": 6,
+          "maxScore": 15
+        },
+        {
+          "id": "navigability",
+          "label": "Codebase navigability",
+          "score": 0,
+          "maxScore": 10
+        },
+        {
+          "id": "prompt-assets",
+          "label": "Prompt assets",
+          "score": 0,
+          "maxScore": 10
+        },
+        {
+          "id": "dependencies",
+          "label": "Dependency hygiene",
+          "score": 5,
+          "maxScore": 10
+        },
+        {
+          "id": "code-style",
+          "label": "Code style tooling",
+          "score": 0,
+          "maxScore": 10
+        },
+        {
+          "id": "documentation",
+          "label": "Documentation coverage",
+          "score": 4,
+          "maxScore": 10
+        },
+        {
+          "id": "git-hygiene",
+          "label": "Git hygiene",
+          "score": 3,
+          "maxScore": 10
+        },
+        {
+          "id": "containerization",
+          "label": "Containerization",
+          "score": 0,
+          "maxScore": 5
+        },
+        {
+          "id": "ide-config",
+          "label": "IDE configuration",
+          "score": 0,
+          "maxScore": 5
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-06-04T21:09:24.593Z",
+      "score": 46,
+      "categories": [
+        {
+          "id": "agent-instructions",
+          "label": "Agent instructions",
+          "score": 0,
+          "maxScore": 20
+        },
+        {
+          "id": "architecture",
+          "label": "Project architecture clarity",
+          "score": 5,
+          "maxScore": 15
+        },
+        {
+          "id": "workflow",
+          "label": "Developer workflow clarity",
+          "score": 8,
+          "maxScore": 15
+        },
+        {
+          "id": "testing",
+          "label": "Testing and validation",
+          "score": 15,
+          "maxScore": 15
+        },
+        {
+          "id": "safety",
+          "label": "Safety boundaries",
+          "score": 6,
+          "maxScore": 15
+        },
+        {
+          "id": "navigability",
+          "label": "Codebase navigability",
+          "score": 0,
+          "maxScore": 10
+        },
+        {
+          "id": "prompt-assets",
+          "label": "Prompt assets",
+          "score": 0,
+          "maxScore": 10
+        },
+        {
+          "id": "dependencies",
+          "label": "Dependency hygiene",
+          "score": 5,
+          "maxScore": 10
+        },
+        {
+          "id": "code-style",
+          "label": "Code style tooling",
+          "score": 0,
+          "maxScore": 10
+        },
+        {
+          "id": "documentation",
+          "label": "Documentation coverage",
+          "score": 4,
+          "maxScore": 10
+        },
+        {
+          "id": "git-hygiene",
+          "label": "Git hygiene",
+          "score": 3,
+          "maxScore": 10
+        },
+        {
+          "id": "containerization",
+          "label": "Containerization",
+          "score": 0,
+          "maxScore": 5
+        },
+        {
+          "id": "ide-config",
+          "label": "IDE configuration",
+          "score": 0,
+          "maxScore": 5
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-06-04T21:12:28.240Z",
+      "score": 100,
+      "categories": [
+        {
+          "id": "agent-instructions",
+          "label": "Agent instructions",
+          "score": 20,
+          "maxScore": 20
+        },
+        {
+          "id": "architecture",
+          "label": "Project architecture clarity",
+          "score": 12,
+          "maxScore": 15
+        },
+        {
+          "id": "workflow",
+          "label": "Developer workflow clarity",
+          "score": 14,
+          "maxScore": 15
+        },
+        {
+          "id": "testing",
+          "label": "Testing and validation",
+          "score": 15,
+          "maxScore": 15
+        },
+        {
+          "id": "safety",
+          "label": "Safety boundaries",
+          "score": 9,
+          "maxScore": 15
+        },
+        {
+          "id": "navigability",
+          "label": "Codebase navigability",
+          "score": 0,
+          "maxScore": 10
+        },
+        {
+          "id": "prompt-assets",
+          "label": "Prompt assets",
+          "score": 10,
+          "maxScore": 10
+        },
+        {
+          "id": "dependencies",
+          "label": "Dependency hygiene",
+          "score": 8,
+          "maxScore": 10
+        },
+        {
+          "id": "code-style",
+          "label": "Code style tooling",
+          "score": 2,
+          "maxScore": 10
+        },
+        {
+          "id": "documentation",
+          "label": "Documentation coverage",
+          "score": 9,
+          "maxScore": 10
+        },
+        {
+          "id": "git-hygiene",
+          "label": "Git hygiene",
+          "score": 3,
+          "maxScore": 10
+        },
+        {
+          "id": "containerization",
+          "label": "Containerization",
+          "score": 0,
+          "maxScore": 5
+        },
+        {
+          "id": "ide-config",
+          "label": "IDE configuration",
+          "score": 2,
+          "maxScore": 5
+        }
+      ]
+    },
+    {
+      "timestamp": "2026-06-04T21:13:15.178Z",
+      "score": 100,
+      "categories": [
+        {
+          "id": "agent-instructions",
+          "label": "Agent instructions",
+          "score": 20,
+          "maxScore": 20
+        },
+        {
+          "id": "architecture",
+          "label": "Project architecture clarity",
+          "score": 12,
+          "maxScore": 15
+        },
+        {
+          "id": "workflow",
+          "label": "Developer workflow clarity",
+          "score": 14,
+          "maxScore": 15
+        },
+        {
+          "id": "testing",
+          "label": "Testing and validation",
+          "score": 15,
+          "maxScore": 15
+        },
+        {
+          "id": "safety",
+          "label": "Safety boundaries",
+          "score": 9,
+          "maxScore": 15
+        },
+        {
+          "id": "navigability",
+          "label": "Codebase navigability",
+          "score": 2,
+          "maxScore": 10
+        },
+        {
+          "id": "prompt-assets",
+          "label": "Prompt assets",
+          "score": 10,
+          "maxScore": 10
+        },
+        {
+          "id": "dependencies",
+          "label": "Dependency hygiene",
+          "score": 8,
+          "maxScore": 10
+        },
+        {
+          "id": "code-style",
+          "label": "Code style tooling",
+          "score": 2,
+          "maxScore": 10
+        },
+        {
+          "id": "documentation",
+          "label": "Documentation coverage",
+          "score": 9,
+          "maxScore": 10
+        },
+        {
+          "id": "git-hygiene",
+          "label": "Git hygiene",
+          "score": 3,
+          "maxScore": 10
+        },
+        {
+          "id": "containerization",
+          "label": "Containerization",
+          "score": 0,
+          "maxScore": 5
+        },
+        {
+          "id": "ide-config",
+          "label": "IDE configuration",
+          "score": 2,
+          "maxScore": 5
+        }
+      ]
+    }
+  ]
+}
