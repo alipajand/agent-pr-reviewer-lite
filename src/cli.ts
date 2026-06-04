@@ -4,7 +4,7 @@ import { getChangedFiles } from "./git.js";
 import { buildReport, shouldFail } from "./risk.js";
 import { renderText } from "./reporters/text.js";
 import { renderJson } from "./reporters/json.js";
-import type { CliOptions, OutputFormat, RiskLevel } from "./types.js";
+import type { CliOptions, OutputFormat, RenderOptions, RiskLevel } from "./types.js";
 
 const VALID_FORMATS: OutputFormat[] = ["text", "json"];
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
@@ -54,14 +54,20 @@ async function main() {
       }
 
       const report = buildReport(options.base, options.head, files);
+      const failed = shouldFail(report.overallRisk, options.failOn);
+
+      const renderOpts: RenderOptions = {
+        failOn: options.failOn,
+        result: failed ? "failed" : "passed",
+      };
 
       if (options.format === "json") {
-        console.log(renderJson(report));
+        console.log(renderJson(report, renderOpts));
       } else {
-        console.log(renderText(report));
+        console.log(renderText(report, renderOpts));
       }
 
-      if (shouldFail(report.overallRisk, options.failOn)) {
+      if (failed) {
         process.exit(1);
       }
     });

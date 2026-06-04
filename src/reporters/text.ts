@@ -1,57 +1,68 @@
-import type { ReviewReport, RiskLevel } from "../types.js";
+import type { RenderOptions, ReviewReport, RiskFinding, RiskLevel } from "../types.js";
 
-const SEVERITY_ICON: Record<RiskLevel, string> = {
-  low: "[ LOW ]",
-  medium: "[MEDIUM]",
-  high: "[ HIGH ]",
-};
-
-const SEVERITY_PREFIX: Record<RiskLevel, string> = {
-  low: "  ",
-  medium: "! ",
-  high: "!!",
-};
-
-function separator(char = "-", width = 60): string {
-  return char.repeat(width);
+function capitalize(level: RiskLevel): string {
+  return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
-export function renderText(report: ReviewReport): string {
+/**
+ * Short display text for a finding line.
+ * For `dependency-added` the reason already carries the package name;
+ * for every other rule the label is concise and avoids repeating the path.
+ */
+function displayText(finding: RiskFinding): string {
+  return finding.id === "dependency-added" ? finding.reason : finding.label;
+}
+
+/**
+ * Deduplicate findings by (id, file) pair, preserving original order.
+ */
+function deduplicate(findings: RiskFinding[]): RiskFinding[] {
+  const seen = new Set<string>();
+  return findings.filter((f) => {
+    const key = `${f.id}\0${f.file}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Collect unique required-review labels, sorted alphabetically.
+ */
+function requiredReviewLabels(findings: RiskFinding[]): string[] {
+  const labels = new Set<string>();
+  for (const f of findings) {
+    if (f.requiredReview) labels.add(f.requiredReview);
+  }
+  return [...labels].sort();
+}
+
+export function renderText(report: ReviewReport, opts: RenderOptions): string {
+  const unique = deduplicate(report.findings);
   const lines: string[] = [];
 
-  lines.push(separator("="));
-  lines.push("  agent-pr-reviewer-lite  |  PR Risk Report");
-  lines.push(separator("="));
-  lines.push(`  Base  : ${report.base}`);
-  lines.push(`  Head  : ${report.head}`);
-  lines.push(`  Files : ${report.totalFiles}`);
-  lines.push(`  Risk  : ${report.overallRisk.toUpperCase()}`);
-  lines.push(separator("="));
+  lines.push(`Agent PR Risk: ${capitalize(report.overallRisk)}`);
 
-  if (report.findings.length === 0) {
-    lines.push("  No risk findings detected.");
-    lines.push(separator("="));
-    return lines.join("\n");
-  }
-
-  lines.push(`  Findings (${report.findings.length}):`);
-  lines.push(separator("-"));
-
-  for (const finding of report.findings) {
-    const icon = SEVERITY_ICON[finding.severity];
-    const prefix = SEVERITY_PREFIX[finding.severity];
-    lines.push(`${prefix}${icon}  ${finding.label}`);
-    lines.push(`        File   : ${finding.file}`);
-    lines.push(`        Reason : ${finding.reason}`);
-    if (finding.requiredReview) {
-      lines.push(`        Review : ${finding.requiredReview}`);
+  if (unique.length === 0) {
+    lines.push("No risky areas detected.");
+  } else {
+    lines.push("Changed risky areas:");
+    for (const f of unique) {
+      lines.push(`- ${f.file} — ${displayText(f)}`);
     }
-    lines.push("");
+
+    const reviewLabels = requiredReviewLabels(unique);
+    if (reviewLabels.length > 0) {
+      lines.push("Required human review:");
+      for (const label of reviewLabels) {
+        lines.push(`- ${label}`);
+      }
+    }
   }
 
-  lines.push(separator("="));
-  lines.push(`  Overall Risk: ${report.overallRisk.toUpperCase()}`);
-  lines.push(separator("="));
+  lines.push("CI result:");
+  lines.push(`- fail-on: ${opts.failOn}`);
+  lines.push(`- result: ${opts.result}`);
 
   return lines.join("\n");
 }

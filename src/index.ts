@@ -12,5 +12,7 @@ export type {
   ReviewReport,
   OutputFormat,
   CliOptions,
+  RenderOptions,
+  JsonReport,
 } from "./types.js";
 export { RISK_LEVEL_ORDER } from "./types.js";

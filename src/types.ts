@@ -36,6 +36,31 @@ export type CliOptions = {
   failOn: RiskLevel;
 };
 
+/** Options passed to every reporter so they can render the CI block. */
+export type RenderOptions = {
+  failOn: RiskLevel;
+  result: "passed" | "failed";
+};
+
+/** Exact JSON output shape exposed to callers / CI systems. */
+export type JsonReport = {
+  risk: RiskLevel;
+  findingCount: number;
+  findings: Array<{
+    id: string;
+    label: string;
+    severity: RiskLevel;
+    file: string;
+    reason: string;
+    requiredReview?: string;
+  }>;
+  requiredHumanReview: string[];
+  ci: {
+    failOn: RiskLevel;
+    result: "passed" | "failed";
+  };
+};
+
 export const RISK_LEVEL_ORDER: Record<RiskLevel, number> = {
   low: 0,
   medium: 1,
