@@ -51,38 +51,40 @@ Verify:
 
 ---
 
-## 4. Install tarball locally
+## 4. Tarball smoke test (automated)
 
-Smoke-test the packed tarball in a throw-away directory.
+Run the full tarball smoke in one command. This builds, packs, installs the `.tgz`
+into a throw-away directory, checks `--help`, runs the binary against a temp git repo,
+and validates the JSON output schema. Does **not** publish.
+
+```bash
+pnpm smoke:tarball
+```
+
+Expected: `✓ Tarball smoke test passed.` with exit code 0.
+
+If you prefer to run steps manually, continue with sections 4a–4c below:
+
+### 4a. Install tarball manually
 
 ```bash
 mkdir /tmp/apr-smoke && cd /tmp/apr-smoke
 npm install --no-save /path/to/agent-pr-reviewer-lite-<version>.tgz
 ```
 
----
-
-## 5. Run CLI help
-
-Verify the installed binary is accessible and shows correct help output.
+### 4b. Run CLI help
 
 ```bash
 ./node_modules/.bin/agent-pr-reviewer-lite --help
 ```
 
-Expected:
-- Help text includes `--base`, `--head`, `--format`, `--fail-on`.
-- Exit code 0.
+Expected: help text includes `--base`, `--head`, `--format`, `--fail-on`, `--github-comment`. Exit code 0.
 
----
-
-## 6. Run CLI against a sample repo
-
-Point the installed CLI at a real git repository to confirm the end-to-end path works.
+### 4c. Run CLI against a sample repo
 
 ```bash
 cd /path/to/any-git-repo
-/path/to/apr-smoke/node_modules/.bin/agent-pr-reviewer-lite \
+/tmp/apr-smoke/node_modules/.bin/agent-pr-reviewer-lite \
   --base HEAD~1 \
   --head HEAD \
   --format text

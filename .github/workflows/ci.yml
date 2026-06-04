@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  ci:
+    name: Build · Test · Pack
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests (unit + integration + E2E + dist smoke)
+        run: pnpm test
+
+      - name: Pack (verify tarball contents without publishing)
+        run: pnpm pack
+
+      - name: Inspect tarball
+        run: |
+          TGZ=$(ls *.tgz | head -1)
+          echo "Tarball: $TGZ"
+          tar -tzf "$TGZ" | sort
+          tar -tzf "$TGZ" | grep -q "package/dist/cli.js"     || { echo "FAIL: dist/cli.js missing"; exit 1; }
+          tar -tzf "$TGZ" | grep -q "package/dist/index.js"   || { echo "FAIL: dist/index.js missing"; exit 1; }
+          tar -tzf "$TGZ" | grep -q "package/dist/index.d.ts" || { echo "FAIL: dist/index.d.ts missing"; exit 1; }
+          tar -tzf "$TGZ" | grep -q "package/README.md"        || { echo "FAIL: README.md missing"; exit 1; }
+          if tar -tzf "$TGZ" | grep -q "package/src/"; then
+            echo "FAIL: src/ must not be in package"; exit 1
+          fi
+          if tar -tzf "$TGZ" | grep -q "package/tests/"; then
+            echo "FAIL: tests/ must not be in package"; exit 1
+          fi
+          echo "Tarball contents OK"
+
+      - name: Self risk check (dogfood)
+        run: pnpm pr:risk || true

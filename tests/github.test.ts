@@ -6,6 +6,7 @@ import {
   COMMENT_MARKER,
   getPrNumber,
   buildCommentBody,
+  isValidRepository,
   postOrUpdateComment,
   tryPostGitHubComment,
 } from "../src/github.js";
@@ -31,6 +32,51 @@ function makeFetchFail(status = 403, statusText = "Forbidden"): typeof fetch {
     json: async () => ({}),
   }) as unknown as typeof fetch;
 }
+
+// ---------------------------------------------------------------------------
+// isValidRepository
+// ---------------------------------------------------------------------------
+
+describe("isValidRepository", () => {
+  it("accepts standard owner/repo format", () => {
+    expect(isValidRepository("owner/repo")).toBe(true);
+    expect(isValidRepository("my-org/my-repo")).toBe(true);
+    expect(isValidRepository("alipajand/agent-pr-reviewer-lite")).toBe(true);
+  });
+
+  it("accepts names with dots, underscores, and digits", () => {
+    expect(isValidRepository("my.org/my_repo123")).toBe(true);
+  });
+
+  it("rejects an empty string", () => {
+    expect(isValidRepository("")).toBe(false);
+  });
+
+  it("rejects a value with no slash", () => {
+    expect(isValidRepository("just-a-name")).toBe(false);
+  });
+
+  it("rejects a value with more than one slash", () => {
+    expect(isValidRepository("owner/repo/extra")).toBe(false);
+  });
+
+  it("rejects a value where the owner segment is empty", () => {
+    expect(isValidRepository("/repo")).toBe(false);
+  });
+
+  it("rejects a value where the repo segment is empty", () => {
+    expect(isValidRepository("owner/")).toBe(false);
+  });
+
+  it("rejects values with spaces", () => {
+    expect(isValidRepository("owner /repo")).toBe(false);
+    expect(isValidRepository("owner/ repo")).toBe(false);
+  });
+
+  it("rejects a bare slash", () => {
+    expect(isValidRepository("/")).toBe(false);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // getPrNumber
@@ -288,6 +334,43 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
     const fetchFn = makeFetchOk([]);
     await tryPostGitHubComment("## markdown", fetchFn);
     expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("skips and warns when GITHUB_REPOSITORY is not in owner/repo format", async () => {
+    const eventFile = join(tmpdir(), `event-${Date.now()}.json`);
+    writeFileSync(eventFile, JSON.stringify({ pull_request: { number: 5 } }));
+    process.env.GITHUB_TOKEN = "tok";
+    process.env.GITHUB_REPOSITORY = "not-a-valid-repo-format";
+    process.env.GITHUB_EVENT_PATH = eventFile;
+
+    const fetchFn = makeFetchOk([]);
+    const stderrWrite = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    await tryPostGitHubComment("## markdown", fetchFn);
+
+    expect(fetchFn).not.toHaveBeenCalled();
+    expect(stderrWrite).toHaveBeenCalledWith(
+      expect.stringContaining("owner/repo format")
+    );
+
+    stderrWrite.mockRestore();
+  });
+
+  it("skips and warns when GITHUB_REPOSITORY has too many slashes", async () => {
+    const eventFile = join(tmpdir(), `event-${Date.now()}.json`);
+    writeFileSync(eventFile, JSON.stringify({ pull_request: { number: 5 } }));
+    process.env.GITHUB_TOKEN = "tok";
+    process.env.GITHUB_REPOSITORY = "owner/repo/extra";
+    process.env.GITHUB_EVENT_PATH = eventFile;
+
+    const fetchFn = makeFetchOk([]);
+    const stderrWrite = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+
+    await tryPostGitHubComment("## markdown", fetchFn);
+
+    expect(fetchFn).not.toHaveBeenCalled();
+
+    stderrWrite.mockRestore();
   });
 
   it("calls postOrUpdateComment when all prerequisites are satisfied", async () => {

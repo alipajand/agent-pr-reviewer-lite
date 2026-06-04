@@ -84,26 +84,24 @@ Options:
 
 ```
 Agent PR Risk: High
-
 Changed risky areas:
-- src/auth/session.ts  — Auth / session file touched
-- migrations/0012_add_tenant_rls.sql  — Database migration changed
-- pnpm-lock.yaml  — Lockfile changed
-
+- migrations/0012_add_tenant_rls.sql — Database migration changed
+- pnpm-lock.yaml — Lockfile changed
+- src/auth/session.ts — Auth / session file touched
 Required human review:
-  auth/session, database migration, lockfile/dependency resolution
-
-CI result: FAILED (fail-on: high)
+- auth/session
+- database migration
+- lockfile/dependency resolution
+CI result:
+- fail-on: high
+- result: failed
 ```
 
 ### JSON
 
 ```json
 {
-  "schemaVersion": "1",
-  "base": "main",
-  "head": "HEAD",
-  "overallRisk": "high",
+  "risk": "high",
   "findingCount": 3,
   "findings": [
     {
@@ -115,9 +113,15 @@ CI result: FAILED (fail-on: high)
       "requiredReview": "auth/session"
     }
   ],
-  "requiredReviews": ["auth/session", "database migration", "lockfile/dependency resolution"],
-  "result": "failed",
-  "failOn": "high"
+  "requiredHumanReview": [
+    "auth/session",
+    "database migration",
+    "lockfile/dependency resolution"
+  ],
+  "ci": {
+    "failOn": "high",
+    "result": "failed"
+  }
 }
 ```
 
@@ -125,21 +129,19 @@ CI result: FAILED (fail-on: high)
 
 ```markdown
 ## Agent PR Risk: High
-
 ### Changed risky areas
-
 | Severity | File | Finding | Required review |
 |---|---|---|---|
-| High | `src/auth/session.ts` | Auth / session file touched | auth/session |
 | High | `migrations/0012_add_tenant_rls.sql` | Database migration changed | database migration |
 | Medium | `pnpm-lock.yaml` | Lockfile changed | lockfile/dependency resolution |
-
+| High | `src/auth/session.ts` | Auth / session file touched | auth/session |
 ### Required human review
-
-auth/session · database migration · lockfile/dependency resolution
-
----
-**CI result: FAILED** (fail-on: high)
+- auth/session
+- database migration
+- lockfile/dependency resolution
+### CI result
+- fail-on: high
+- result: failed
 ```
 
 ---
@@ -315,7 +317,7 @@ The `--github-comment` flag never changes the exit code. A comment-posting failu
 ## Development
 
 ```bash
-# Run tests (266 tests, no network, no LLM)
+# Run tests (no network, no LLM)
 pnpm test
 
 # Build TypeScript

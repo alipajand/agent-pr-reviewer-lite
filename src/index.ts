@@ -4,6 +4,7 @@ export {
   getPrNumber,
   readEventPayload,
   buildCommentBody,
+  isValidRepository,
   postOrUpdateComment,
   tryPostGitHubComment,
 } from "./github.js";

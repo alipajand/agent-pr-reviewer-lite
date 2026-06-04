@@ -124,10 +124,21 @@ export async function postOrUpdateComment(opts: {
 // ---------------------------------------------------------------------------
 
 /**
+ * Return true when `value` matches the `owner/repo` format expected by the
+ * GitHub API.  The owner and repo segments may contain letters, digits,
+ * hyphens, underscores, and dots — but must each be non-empty and there must
+ * be exactly one `/` separator.
+ */
+export function isValidRepository(value: string): boolean {
+  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(value);
+}
+
+/**
  * Post or update a PR comment if all required environment variables are present
  * and the event payload contains a pull_request.number.
  *
  * Silently skips when prerequisites are not met so local runs are unaffected.
+ * Skips with a warning when GITHUB_REPOSITORY is not in owner/repo format.
  * Accepts optional `fetchFn` for testing without live network calls.
  */
 export async function tryPostGitHubComment(
@@ -139,6 +150,13 @@ export async function tryPostGitHubComment(
   const eventPath = process.env.GITHUB_EVENT_PATH;
 
   if (!token || !repository || !eventPath) return;
+
+  if (!isValidRepository(repository)) {
+    process.stderr.write(
+      `Warning: GITHUB_REPOSITORY "${repository}" is not in owner/repo format; skipping comment.\n`
+    );
+    return;
+  }
 
   const payload = readEventPayload(eventPath);
   const prNumber = getPrNumber(payload);

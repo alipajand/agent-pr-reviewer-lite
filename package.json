@@ -27,7 +27,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "pr:risk": "tsx src/cli.ts --base main --head HEAD --fail-on high"
+    "pr:risk": "tsx src/cli.ts --base main --head HEAD --fail-on high",
+    "smoke:tarball": "bash scripts/tarball-smoke.sh"
   },
   "keywords": [
     "agent",
