@@ -28,6 +28,9 @@ pnpm agent-pr-reviewer-lite --base main --fail-on medium
 
 # Compare arbitrary refs
 pnpm agent-pr-reviewer-lite --base origin/main --head feature/my-branch --format text
+
+# Markdown output (suitable for PR comments)
+pnpm agent-pr-reviewer-lite --base main --format markdown
 ```
 
 ### Options
@@ -37,7 +40,7 @@ pnpm agent-pr-reviewer-lite --base origin/main --head feature/my-branch --format
 | `--config <path>` | auto-discover | Path to config file |
 | `--base <ref>` | `main` | Base git ref to compare from |
 | `--head <ref>` | `HEAD` | Head git ref to compare to |
-| `--format <text\|json>` | `text` | Output format |
+| `--format <text\|json\|markdown>` | `text` | Output format |
 | `--fail-on <low\|medium\|high>` | `high` | Exit code 1 when overall risk ≥ this level |
 
 CLI flags always override config file values.
@@ -136,6 +139,27 @@ Quick example:
 | `**/foo` | `foo` at any directory depth |
 | `docs/**` | Everything under `docs/` |
 | `src/**/*.ts` | All `.ts` files under `src/` |
+
+### Output formats
+
+**`text`** (default) — human-readable terminal output:
+```
+Agent PR Risk: High
+Changed risky areas:
+- src/auth/session.ts — Auth / session file touched
+...
+```
+
+**`json`** — machine-readable JSON matching the `JsonReport` schema (suitable for downstream CI steps).
+
+**`markdown`** — GitHub-flavoured Markdown table, suitable for pasting into a PR comment:
+```markdown
+## Agent PR Risk: High
+### Changed risky areas
+| Severity | File | Finding | Required review |
+|---|---|---|---|
+| High | `src/auth/session.ts` | Auth / session file touched | auth/session |
+```
 
 ## Development
 

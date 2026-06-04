@@ -27,7 +27,7 @@ export type ReviewReport = {
   findings: RiskFinding[];
 };
 
-export type OutputFormat = "text" | "json";
+export type OutputFormat = "text" | "json" | "markdown";
 
 export type CliOptions = {
   base: string;

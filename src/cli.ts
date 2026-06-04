@@ -6,9 +6,10 @@ import { buildReport, shouldFail } from "./risk.js";
 import { DEFAULT_RULES, buildExtraRules } from "./rules.js";
 import { renderText } from "./reporters/text.js";
 import { renderJson } from "./reporters/json.js";
+import { renderMarkdown } from "./reporters/markdown.js";
 import type { CliOptions, OutputFormat, RenderOptions, RiskLevel } from "./types.js";
 
-const VALID_FORMATS: OutputFormat[] = ["text", "json"];
+const VALID_FORMATS: OutputFormat[] = ["text", "json", "markdown"];
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
 
 function assertOutputFormat(value: string): OutputFormat {
@@ -39,7 +40,7 @@ async function main() {
     // --base and --fail-on intentionally have no Commander default so config values win
     .option("--base <ref>", "Base git ref to compare from")
     .option("--head <ref>", "Head git ref to compare to", "HEAD")
-    .option("--format <format>", "Output format: text or json", "text")
+    .option("--format <format>", "Output format: text, json, or markdown", "text")
     .option("--fail-on <level>", "Exit with code 1 when risk >= this level (low|medium|high)")
     .action(async (opts) => {
       // Load config (throws on parse errors; returns null when file absent)
@@ -92,6 +93,8 @@ async function main() {
 
       if (options.format === "json") {
         console.log(renderJson(report, renderOpts));
+      } else if (options.format === "markdown") {
+        console.log(renderMarkdown(report, renderOpts));
       } else {
         console.log(renderText(report, renderOpts));
       }

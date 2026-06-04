@@ -5,6 +5,7 @@ export type { Rule } from "./rules.js";
 export { buildReport, shouldFail } from "./risk.js";
 export { renderText } from "./reporters/text.js";
 export { renderJson } from "./reporters/json.js";
+export { renderMarkdown } from "./reporters/markdown.js";
 export type {
   ChangeStatus,
   ChangedFile,
