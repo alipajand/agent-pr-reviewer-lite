@@ -364,4 +364,21 @@ describe("edge case 10: renamed auth file triggers auth rule and preserves previ
     expect(parseNameStatus("")).toBeNull();
     expect(parseNameStatus("A")).toBeNull();
   });
+
+  it("parseNameStatus maps unrecognized status codes (e.g. type-change 'T') to modified", () => {
+    const result = parseNameStatus("T\tsrc/symlink.ts");
+    expect(result?.status).toBe("modified");
+    expect(result?.path).toBe("src/symlink.ts");
+  });
+
+  it("parseNameStatus maps copy 'C100' lines to renamed (R-prefix only) — non-R falls through to modified", () => {
+    // "C100" does not start with "R", so it is treated as a 2-column line and
+    // mapped through the default branch to "modified".
+    const result = parseNameStatus("C100\tsrc/copied.ts");
+    expect(result?.status).toBe("modified");
+  });
+
+  it("parseNameStatus returns null for a rename line missing the new path", () => {
+    expect(parseNameStatus("R100\told/path.ts")).toBeNull();
+  });
 });

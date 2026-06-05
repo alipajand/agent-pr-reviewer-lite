@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   COMMENT_MARKER,
   getPrNumber,
+  readEventPayload,
   buildCommentBody,
   isValidRepository,
   postOrUpdateComment,
@@ -122,6 +123,53 @@ describe("getPrNumber", () => {
 
   it("handles large PR numbers", () => {
     expect(getPrNumber({ pull_request: { number: 9999 } })).toBe(9999);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// readEventPayload
+// ---------------------------------------------------------------------------
+
+describe("readEventPayload", () => {
+  const created: string[] = [];
+
+  afterEach(() => {
+    for (const f of created.splice(0)) {
+      try {
+        rmSync(f, { force: true });
+      } catch {
+        // best-effort
+      }
+    }
+  });
+
+  function writeEvent(content: string): string {
+    const path = join(
+      tmpdir(),
+      `apr-event-${Date.now()}-${Math.random().toString(36).slice(2)}.json`
+    );
+    writeFileSync(path, content, "utf8");
+    created.push(path);
+    return path;
+  }
+
+  it("parses a valid event payload from disk", () => {
+    const path = writeEvent(JSON.stringify({ pull_request: { number: 7 } }));
+    expect(readEventPayload(path)).toEqual({ pull_request: { number: 7 } });
+  });
+
+  it("round-trips with getPrNumber to extract the PR number", () => {
+    const path = writeEvent(JSON.stringify({ pull_request: { number: 123 } }));
+    expect(getPrNumber(readEventPayload(path))).toBe(123);
+  });
+
+  it("returns null when the file does not exist", () => {
+    expect(readEventPayload("/nonexistent/path/event.json")).toBeNull();
+  });
+
+  it("returns null when the file contains invalid JSON", () => {
+    const path = writeEvent("{ not valid json");
+    expect(readEventPayload(path)).toBeNull();
   });
 });
 

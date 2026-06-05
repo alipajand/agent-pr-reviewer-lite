@@ -141,6 +141,14 @@ describe("renderText", () => {
     expect(out).not.toContain("Required human review:");
   });
 
+  it("omits 'Required human review:' when findings exist but none require review", () => {
+    const noReview: RiskFinding = { ...highFinding, requiredReview: undefined };
+    const out = renderText(makeReport([noReview], "high"), failedOpts);
+    expect(out).toContain("Changed risky areas:");
+    expect(out).toContain("- src/auth/session.ts — Auth / session file touched");
+    expect(out).not.toContain("Required human review:");
+  });
+
   it("shows CI block with fail-on and result", () => {
     const out = renderText(makeReport([highFinding]), failedOpts);
     expect(out).toContain("CI result:");

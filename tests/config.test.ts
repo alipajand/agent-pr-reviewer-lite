@@ -233,6 +233,59 @@ describe("loadConfig", () => {
     expect(() => loadConfig(filePath)).toThrow(/severity/);
   });
 
+  it("throws when base is not a string", () => {
+    const filePath = writeConfig({ base: 123 });
+    expect(() => loadConfig(filePath)).toThrow(/config.base must be a string/);
+  });
+
+  it("throws when extraRiskPaths is not an array", () => {
+    const filePath = writeConfig({ extraRiskPaths: { id: "x" } });
+    expect(() => loadConfig(filePath)).toThrow(/config.extraRiskPaths must be an array/);
+  });
+
+  it("throws when an extraRiskPaths entry is not an object", () => {
+    const filePath = writeConfig({ extraRiskPaths: ["not-an-object"] });
+    expect(() => loadConfig(filePath)).toThrow(/must be an object/);
+  });
+
+  it("throws when an extraRiskPaths entry has an empty id", () => {
+    const filePath = writeConfig({
+      extraRiskPaths: [{ id: "  ", label: "X", severity: "low", patterns: ["a"] }],
+    });
+    expect(() => loadConfig(filePath)).toThrow(/id must be a non-empty string/);
+  });
+
+  it("throws when an extraRiskPaths entry has an empty label", () => {
+    const filePath = writeConfig({
+      extraRiskPaths: [{ id: "x", label: "", severity: "low", patterns: ["a"] }],
+    });
+    expect(() => loadConfig(filePath)).toThrow(/label must be a non-empty string/);
+  });
+
+  it("throws when an extraRiskPaths entry has empty patterns", () => {
+    const filePath = writeConfig({
+      extraRiskPaths: [{ id: "x", label: "X", severity: "low", patterns: [] }],
+    });
+    expect(() => loadConfig(filePath)).toThrow(/patterns must be a non-empty array of strings/);
+  });
+
+  it("throws when an extraRiskPaths entry has a non-string pattern", () => {
+    const filePath = writeConfig({
+      extraRiskPaths: [{ id: "x", label: "X", severity: "low", patterns: [42] }],
+    });
+    expect(() => loadConfig(filePath)).toThrow(/patterns must be a non-empty array of strings/);
+  });
+
+  it("parses an extraRiskPaths entry that includes requiredReview", () => {
+    const filePath = writeConfig({
+      extraRiskPaths: [
+        { id: "x", label: "X", severity: "high", patterns: ["a/**"], requiredReview: "team-x" },
+      ],
+    });
+    const config = loadConfig(filePath);
+    expect(config?.extraRiskPaths?.[0].requiredReview).toBe("team-x");
+  });
+
   it("auto-discovers config from cwd", () => {
     writeConfig({ base: "develop" });
     const config = loadConfig(undefined, tmpDir);

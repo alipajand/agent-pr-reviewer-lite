@@ -488,6 +488,29 @@ describe("extractAddedDependencies", () => {
   it("handles empty added lines", () => {
     expect(extractAddedDependencies([])).toEqual([]);
   });
+
+  it("skips non-key lines inside a dependency section", () => {
+    const addedLines = [
+      '  "dependencies": {',
+      "    // a stray comment-like line that is not a key",
+      '    "axios": "^1.0.0"',
+      "  }",
+    ];
+    expect(extractAddedDependencies(addedLines)).toEqual(["axios"]);
+  });
+
+  it("resets out of a dependency section on a closing brace with trailing comma", () => {
+    const addedLines = [
+      '  "dependencies": {',
+      '    "axios": "^1.0.0"',
+      "  },",
+      '  "scripts": {',
+      '    "build": "tsc"',
+      "  }",
+    ];
+    // "build" lives in scripts, not a dependency section, so it is excluded.
+    expect(extractAddedDependencies(addedLines)).toEqual(["axios"]);
+  });
 });
 
 describe("dependency-added rule", () => {
