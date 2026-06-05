@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { pathToFileURL } from "node:url";
 import { loadConfig, isIgnored } from "./config.js";
 import { getChangedFiles } from "./git.js";
 import { tryPostGitHubComment } from "./github.js";
@@ -37,7 +38,7 @@ function assertRiskLevel(value: string): RiskLevel {
   return value as RiskLevel;
 }
 
-async function main() {
+export async function run(argv: string[] = process.argv): Promise<void> {
   const program = new Command();
 
   program
@@ -183,10 +184,20 @@ Examples:
       }
     });
 
-  await program.parseAsync(process.argv);
+  await program.parseAsync(argv);
 }
 
-main().catch((err) => {
-  console.error("Unexpected error:", err);
-  process.exit(2);
-});
+/**
+ * Auto-execute only when this file is invoked directly as the program
+ * entrypoint (`node dist/cli.js` or `tsx src/cli.ts`). When imported as a
+ * module (e.g. by tests) `run` is not called, so callers control argv.
+ */
+const invokedDirectly =
+  !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (invokedDirectly) {
+  run().catch((err) => {
+    console.error("Unexpected error:", err);
+    process.exit(2);
+  });
+}
