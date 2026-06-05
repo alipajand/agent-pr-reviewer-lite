@@ -60,6 +60,8 @@ function makeRepo(): string {
   git(["init"], dir);
   git(["config", "user.email", "ci@example.com"], dir);
   git(["config", "user.name", "CI Test"], dir);
+  // Isolated repos must never inherit the host's commit-signing config.
+  git(["config", "commit.gpgsign", "false"], dir);
   return dir;
 }
 
