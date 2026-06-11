@@ -52,7 +52,7 @@
     "commander": "^15.0.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.1",
+    "@types/node": "^25.9.3",
     "@vitest/coverage-v8": "^4.1.8",
     "tsx": "^4.15.7",
     "typescript": "^6.0.3",
