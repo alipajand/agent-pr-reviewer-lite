@@ -62,15 +62,15 @@ pnpm pr:risk
 
 `agent-pr-reviewer-lite.config.json` extends the 11 built-in rules with 7 high-severity LedgerGuard-specific rules:
 
-| Rule ID | Trigger paths | Required review |
-|---------|---------------|-----------------|
-| `ledgerguard-document-ingestion` | `**/upload/**`, `**/documents/**`, `**/extractions/**`, `**/ocr/**` | document ingestion/extraction |
-| `ledgerguard-verification` | `**/review/**`, `**/verification/**` | human verification workflow |
-| `ledgerguard-renewals` | `**/renewals/**` | renewals workflow |
-| `ledgerguard-commitments-ledger` | `**/commitments/**` | commitments ledger |
-| `ledgerguard-normalization` | `**/currency/**`, `**/normalization/**`, `**/money/**` | currency normalization |
-| `ledgerguard-billing-plans` | `**/pricing/**`, `**/billing/**`, `**/stripe/**`, `**/plans/**` | pricing/billing plans |
-| `ledgerguard-rls-policy` | `supabase/migrations/**`, `supabase/policies/**`, `**/tenant/**`, `**/rls/**` | tenant isolation/RLS |
+| Rule ID                          | Trigger paths                                                                 | Required review               |
+| -------------------------------- | ----------------------------------------------------------------------------- | ----------------------------- |
+| `ledgerguard-document-ingestion` | `**/upload/**`, `**/documents/**`, `**/extractions/**`, `**/ocr/**`           | document ingestion/extraction |
+| `ledgerguard-verification`       | `**/review/**`, `**/verification/**`                                          | human verification workflow   |
+| `ledgerguard-renewals`           | `**/renewals/**`                                                              | renewals workflow             |
+| `ledgerguard-commitments-ledger` | `**/commitments/**`                                                           | commitments ledger            |
+| `ledgerguard-normalization`      | `**/currency/**`, `**/normalization/**`, `**/money/**`                        | currency normalization        |
+| `ledgerguard-billing-plans`      | `**/pricing/**`, `**/billing/**`, `**/stripe/**`, `**/plans/**`               | pricing/billing plans         |
+| `ledgerguard-rls-policy`         | `supabase/migrations/**`, `supabase/policies/**`, `**/tenant/**`, `**/rls/**` | tenant isolation/RLS          |
 
 All 7 are `severity: "high"` and will cause the CI job to fail (`--fail-on high`).
 
@@ -80,15 +80,15 @@ Markdown and documentation files are ignored via the `ignore` config field so do
 
 ## Why every rule is high severity
 
-| Domain | Risk |
-|--------|------|
-| Document ingestion / extraction | Corrupted parsing loses contract data permanently |
-| Human verification | Bypassing verification allows unreviewed data into the ledger |
-| Renewals | Incorrect renewal logic mischarges customers or misses deadlines |
-| Commitments ledger | Ledger corruption is a financial and audit integrity issue |
-| Currency normalization | Rounding or FX errors propagate silently into financial records |
-| Pricing / billing plans | Wrong prices affect revenue; Stripe webhook bugs cause double charges |
-| Supabase RLS / tenant isolation | A broken RLS policy leaks one tenant's data to another |
+| Domain                          | Risk                                                                  |
+| ------------------------------- | --------------------------------------------------------------------- |
+| Document ingestion / extraction | Corrupted parsing loses contract data permanently                     |
+| Human verification              | Bypassing verification allows unreviewed data into the ledger         |
+| Renewals                        | Incorrect renewal logic mischarges customers or misses deadlines      |
+| Commitments ledger              | Ledger corruption is a financial and audit integrity issue            |
+| Currency normalization          | Rounding or FX errors propagate silently into financial records       |
+| Pricing / billing plans         | Wrong prices affect revenue; Stripe webhook bugs cause double charges |
+| Supabase RLS / tenant isolation | A broken RLS policy leaks one tenant's data to another                |
 
 ---
 
@@ -104,11 +104,11 @@ The workflow in `.github/workflows/agent-pr-risk.yml`:
 
 ### Exit codes in CI
 
-| Code | Meaning |
-|------|---------|
-| `0` | No high-risk findings — PR can proceed |
-| `1` | High-risk finding detected — PR is blocked pending human review |
-| `2` | Tool/config/git error — investigate before merging |
+| Code | Meaning                                                         |
+| ---- | --------------------------------------------------------------- |
+| `0`  | No high-risk findings — PR can proceed                          |
+| `1`  | High-risk finding detected — PR is blocked pending human review |
+| `2`  | Tool/config/git error — investigate before merging              |
 
 ---
 

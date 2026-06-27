@@ -44,12 +44,12 @@ async function runCli(flags: string[]): Promise<Captured> {
   const errSpy = vi.spyOn(console, "error").mockImplementation((...args) => {
     err.push(args.join(" "));
   });
-  const exitSpy = vi
-    .spyOn(process, "exit")
-    .mockImplementation(((code?: number) => {
-      exitCode = code ?? 0;
-      throw new ExitSignal(exitCode);
-    }) as never);
+  const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
+    code?: number,
+  ) => {
+    exitCode = code ?? 0;
+    throw new ExitSignal(exitCode);
+  }) as never);
 
   try {
     await run(["node", "cli", ...flags]);
@@ -87,7 +87,7 @@ function makeRepo(): string {
 function writeAndCommit(
   dir: string,
   files: Record<string, string>,
-  message: string
+  message: string,
 ): void {
   for (const [rel, content] of Object.entries(files)) {
     const full = join(dir, rel);
@@ -131,7 +131,12 @@ describe("run — argument validation", () => {
   it("exits 1 with a helpful message for an invalid --format", async () => {
     setup();
     const { exitCode, stderr } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--format", "xml",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "xml",
     ]);
     expect(exitCode).toBe(1);
     expect(stderr).toMatch(/--format "xml" is not valid/);
@@ -140,7 +145,12 @@ describe("run — argument validation", () => {
   it("exits 1 with a helpful message for an invalid --fail-on", async () => {
     setup();
     const { exitCode, stderr } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--fail-on", "critical",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--fail-on",
+      "critical",
     ]);
     expect(exitCode).toBe(1);
     expect(stderr).toMatch(/--fail-on "critical" is not valid/);
@@ -156,7 +166,12 @@ describe("run — config errors", () => {
     writeFileSync(badConfig, "{ not valid json", "utf8");
 
     const { exitCode, stderr } = await runCli([
-      "--config", badConfig, "--base", "HEAD~1", "--head", "HEAD",
+      "--config",
+      badConfig,
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
     ]);
     expect(exitCode).toBe(2);
     expect(stderr).toMatch(/Failed to load config file/);
@@ -169,7 +184,10 @@ describe("run — git errors", () => {
   it("exits 2 when the base ref does not exist", async () => {
     setup();
     const { exitCode, stderr } = await runCli([
-      "--base", "nonexistent-ref-xyz", "--head", "HEAD",
+      "--base",
+      "nonexistent-ref-xyz",
+      "--head",
+      "HEAD",
     ]);
     expect(exitCode).toBe(2);
     expect(stderr).toMatch(/git command failed/);
@@ -181,19 +199,37 @@ describe("run — git errors", () => {
 describe("run — output formats", () => {
   it("text format: low risk yields no exit call and prints 'Low'", async () => {
     const repo = setup();
-    writeAndCommit(repo, { "utils/helpers.ts": "export const a = 1;\n" }, "add helper");
+    writeAndCommit(
+      repo,
+      { "utils/helpers.ts": "export const a = 1;\n" },
+      "add helper",
+    );
 
-    const { exitCode, stdout } = await runCli(["--base", "HEAD~1", "--head", "HEAD"]);
+    const { exitCode, stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+    ]);
     expect(exitCode).toBeUndefined();
     expect(stdout).toMatch(/Agent PR Risk: Low/);
   });
 
   it("json format: emits parseable JSON with the expected schema", async () => {
     const repo = setup();
-    writeAndCommit(repo, { "utils/helpers.ts": "export const a = 1;\n" }, "add helper");
+    writeAndCommit(
+      repo,
+      { "utils/helpers.ts": "export const a = 1;\n" },
+      "add helper",
+    );
 
     const { stdout } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--format", "json",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "json",
     ]);
     const parsed = JSON.parse(stdout) as Record<string, unknown>;
     expect(parsed).toHaveProperty("risk");
@@ -203,10 +239,19 @@ describe("run — output formats", () => {
 
   it("markdown format: emits the markdown heading", async () => {
     const repo = setup();
-    writeAndCommit(repo, { "utils/helpers.ts": "export const a = 1;\n" }, "add helper");
+    writeAndCommit(
+      repo,
+      { "utils/helpers.ts": "export const a = 1;\n" },
+      "add helper",
+    );
 
     const { stdout } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--format", "markdown",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "markdown",
     ]);
     expect(stdout).toMatch(/^## Agent PR Risk:/m);
   });
@@ -220,11 +265,16 @@ describe("run — risk to exit code", () => {
     writeAndCommit(
       repo,
       { "src/auth/session.ts": "export const s = 1;\n" },
-      "add auth"
+      "add auth",
     );
 
     const { exitCode, stdout } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--fail-on",
+      "high",
     ]);
     expect(exitCode).toBe(1);
     expect(stdout).toMatch(/High/);
@@ -232,10 +282,19 @@ describe("run — risk to exit code", () => {
 
   it("exits 0 (no exit call) for a medium finding when --fail-on high", async () => {
     const repo = setup();
-    writeAndCommit(repo, { "pnpm-lock.yaml": "lockfileVersion: '6.0'\n" }, "add lock");
+    writeAndCommit(
+      repo,
+      { "pnpm-lock.yaml": "lockfileVersion: '6.0'\n" },
+      "add lock",
+    );
 
     const { exitCode, stdout } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--fail-on",
+      "high",
     ]);
     expect(exitCode).toBeUndefined();
     expect(stdout).toMatch(/Medium/);
@@ -250,13 +309,22 @@ describe("run — config file behavior", () => {
     writeFileSync(
       join(repo, "agent-pr-reviewer-lite.config.json"),
       JSON.stringify({ failOn: "medium" }),
-      "utf8"
+      "utf8",
     );
     git(["add", "-A"], repo);
     git(["commit", "-m", "add config"], repo);
-    writeAndCommit(repo, { "pnpm-lock.yaml": "lockfileVersion: '6.0'\n" }, "add lock");
+    writeAndCommit(
+      repo,
+      { "pnpm-lock.yaml": "lockfileVersion: '6.0'\n" },
+      "add lock",
+    );
 
-    const { exitCode, stdout } = await runCli(["--base", "HEAD~1", "--head", "HEAD"]);
+    const { exitCode, stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+    ]);
     expect(exitCode).toBe(1);
     expect(stdout).toMatch(/Medium/);
   });
@@ -266,14 +334,23 @@ describe("run — config file behavior", () => {
     writeFileSync(
       join(repo, "agent-pr-reviewer-lite.config.json"),
       JSON.stringify({ ignore: ["src/auth/**"] }),
-      "utf8"
+      "utf8",
     );
     git(["add", "-A"], repo);
     git(["commit", "-m", "add config"], repo);
-    writeAndCommit(repo, { "src/auth/session.ts": "export const s = 1;\n" }, "add auth");
+    writeAndCommit(
+      repo,
+      { "src/auth/session.ts": "export const s = 1;\n" },
+      "add auth",
+    );
 
     const { exitCode, stdout } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--fail-on",
+      "high",
     ]);
     expect(exitCode).toBeUndefined();
     expect(stdout).toMatch(/Low/);
@@ -293,14 +370,25 @@ describe("run — config file behavior", () => {
           },
         ],
       }),
-      "utf8"
+      "utf8",
     );
     git(["add", "-A"], repo);
     git(["commit", "-m", "add config"], repo);
-    writeAndCommit(repo, { "src/custom/thing.ts": "export const t = 1;\n" }, "touch custom");
+    writeAndCommit(
+      repo,
+      { "src/custom/thing.ts": "export const t = 1;\n" },
+      "touch custom",
+    );
 
     const { exitCode, stdout } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--format", "json", "--fail-on", "high",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "json",
+      "--fail-on",
+      "high",
     ]);
     expect(exitCode).toBe(1);
     const parsed = JSON.parse(stdout) as { findings: Array<{ id: string }> };
@@ -314,23 +402,39 @@ describe("run — --github-comment without env", () => {
   const savedEnv: Record<string, string | undefined> = {};
 
   afterEach(() => {
-    for (const key of ["GITHUB_TOKEN", "GITHUB_REPOSITORY", "GITHUB_EVENT_PATH"]) {
+    for (const key of [
+      "GITHUB_TOKEN",
+      "GITHUB_REPOSITORY",
+      "GITHUB_EVENT_PATH",
+    ]) {
       if (savedEnv[key] === undefined) delete process.env[key];
       else process.env[key] = savedEnv[key];
     }
   });
 
   it("is a no-op locally (no GitHub env) and still prints the report", async () => {
-    for (const key of ["GITHUB_TOKEN", "GITHUB_REPOSITORY", "GITHUB_EVENT_PATH"]) {
+    for (const key of [
+      "GITHUB_TOKEN",
+      "GITHUB_REPOSITORY",
+      "GITHUB_EVENT_PATH",
+    ]) {
       savedEnv[key] = process.env[key];
       delete process.env[key];
     }
 
     const repo = setup();
-    writeAndCommit(repo, { "utils/helpers.ts": "export const a = 1;\n" }, "add helper");
+    writeAndCommit(
+      repo,
+      { "utils/helpers.ts": "export const a = 1;\n" },
+      "add helper",
+    );
 
     const { exitCode, stdout } = await runCli([
-      "--base", "HEAD~1", "--head", "HEAD", "--github-comment",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--github-comment",
     ]);
     expect(exitCode).toBeUndefined();
     expect(stdout).toMatch(/Agent PR Risk: Low/);

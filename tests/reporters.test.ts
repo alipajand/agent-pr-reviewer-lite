@@ -21,7 +21,8 @@ const migrationFinding: RiskFinding = {
   label: "Database migration changed",
   severity: "high",
   file: "supabase/migrations/20260604_add_org_policy.sql",
-  reason: "Migration file 'supabase/migrations/20260604_add_org_policy.sql' was added",
+  reason:
+    "Migration file 'supabase/migrations/20260604_add_org_policy.sql' was added",
   requiredReview: "database migration",
 };
 
@@ -39,13 +40,14 @@ const mediumFinding: RiskFinding = {
   label: "Lockfile changed",
   severity: "medium",
   file: "pnpm-lock.yaml",
-  reason: "Lockfile 'pnpm-lock.yaml' was modified — verify dependency resolution is correct",
+  reason:
+    "Lockfile 'pnpm-lock.yaml' was modified — verify dependency resolution is correct",
   requiredReview: "lockfile/dependency resolution",
 };
 
 function makeReport(
   findings: RiskFinding[],
-  overallRisk: ReviewReport["overallRisk"] = "high"
+  overallRisk: ReviewReport["overallRisk"] = "high",
 ): ReviewReport {
   return {
     base: "main",
@@ -93,7 +95,9 @@ describe("renderText", () => {
 
   it("lists each finding as '- <file> — <label>'", () => {
     const out = renderText(makeReport([highFinding]), failedOpts);
-    expect(out).toContain("- src/auth/session.ts — Auth / session file touched");
+    expect(out).toContain(
+      "- src/auth/session.ts — Auth / session file touched",
+    );
   });
 
   it("uses reason (not label) for dependency-added findings", () => {
@@ -124,7 +128,7 @@ describe("renderText", () => {
       .filter((l) => l.startsWith("- "))
       .map((l) => l.slice(2));
     expect(reviewLines).toEqual(
-      ["auth/session", "database migration", "dependency changes"].sort()
+      ["auth/session", "database migration", "dependency changes"].sort(),
     );
   });
 
@@ -145,7 +149,9 @@ describe("renderText", () => {
     const noReview: RiskFinding = { ...highFinding, requiredReview: undefined };
     const out = renderText(makeReport([noReview], "high"), failedOpts);
     expect(out).toContain("Changed risky areas:");
-    expect(out).toContain("- src/auth/session.ts — Auth / session file touched");
+    expect(out).toContain(
+      "- src/auth/session.ts — Auth / session file touched",
+    );
     expect(out).not.toContain("Required human review:");
   });
 
@@ -176,7 +182,7 @@ describe("renderText", () => {
         "CI result:",
         "- fail-on: high",
         "- result: passed",
-      ].join("\n")
+      ].join("\n"),
     );
   });
 
@@ -193,7 +199,7 @@ describe("renderText", () => {
         "CI result:",
         "- fail-on: high",
         "- result: failed",
-      ].join("\n")
+      ].join("\n"),
     );
   });
 });
@@ -209,20 +215,24 @@ describe("renderJson", () => {
   });
 
   it("top-level risk matches overallRisk", () => {
-    const parsed = JSON.parse(renderJson(makeReport([highFinding], "high"), failedOpts));
+    const parsed = JSON.parse(
+      renderJson(makeReport([highFinding], "high"), failedOpts),
+    );
     expect(parsed.risk).toBe("high");
   });
 
   it("findingCount reflects deduplicated count", () => {
     const dup = { ...highFinding };
     const parsed = JSON.parse(
-      renderJson(makeReport([highFinding, dup], "high"), failedOpts)
+      renderJson(makeReport([highFinding, dup], "high"), failedOpts),
     );
     expect(parsed.findingCount).toBe(1);
   });
 
   it("findings array contains correct shape", () => {
-    const parsed = JSON.parse(renderJson(makeReport([highFinding]), failedOpts));
+    const parsed = JSON.parse(
+      renderJson(makeReport([highFinding]), failedOpts),
+    );
     const f = parsed.findings[0];
     expect(f).toHaveProperty("id", "auth-file-touched");
     expect(f).toHaveProperty("label", "Auth / session file touched");
@@ -235,7 +245,7 @@ describe("renderJson", () => {
   it("omits requiredReview key when undefined", () => {
     const noReview: RiskFinding = { ...highFinding, requiredReview: undefined };
     const parsed = JSON.parse(
-      renderJson(makeReport([noReview], "high"), failedOpts)
+      renderJson(makeReport([noReview], "high"), failedOpts),
     );
     expect(parsed.findings[0]).not.toHaveProperty("requiredReview");
   });
@@ -249,7 +259,9 @@ describe("renderJson", () => {
   });
 
   it("ci.failOn and ci.result are correct when failed", () => {
-    const parsed = JSON.parse(renderJson(makeReport([highFinding]), failedOpts));
+    const parsed = JSON.parse(
+      renderJson(makeReport([highFinding]), failedOpts),
+    );
     expect(parsed.ci.failOn).toBe("high");
     expect(parsed.ci.result).toBe("failed");
   });
@@ -267,7 +279,9 @@ describe("renderJson", () => {
   });
 
   it("matches exact JsonReport schema shape", () => {
-    const parsed = JSON.parse(renderJson(makeReport([highFinding]), failedOpts));
+    const parsed = JSON.parse(
+      renderJson(makeReport([highFinding]), failedOpts),
+    );
     const keys = Object.keys(parsed);
     expect(keys).toEqual(
       expect.arrayContaining([
@@ -276,10 +290,10 @@ describe("renderJson", () => {
         "findings",
         "requiredHumanReview",
         "ci",
-      ])
+      ]),
     );
     expect(Object.keys(parsed.ci)).toEqual(
-      expect.arrayContaining(["failOn", "result"])
+      expect.arrayContaining(["failOn", "result"]),
     );
   });
 
@@ -288,7 +302,7 @@ describe("renderJson", () => {
     const parsed = JSON.parse(renderJson(report, failedOpts));
     expect(parsed.findings[0].file).toBe("src/auth/session.ts");
     expect(parsed.findings[1].file).toBe(
-      "supabase/migrations/20260604_add_org_policy.sql"
+      "supabase/migrations/20260604_add_org_policy.sql",
     );
     expect(parsed.findings[2].file).toBe("package.json");
   });

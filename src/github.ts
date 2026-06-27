@@ -82,11 +82,11 @@ export async function postOrUpdateComment(opts: {
   // 1. List all PR comments (PR comments use the Issues API)
   const listRes = await fetchImpl(
     `${base}/repos/${owner}/${repo}/issues/${prNumber}/comments`,
-    { headers }
+    { headers },
   );
   if (!listRes.ok) {
     throw new Error(
-      `GitHub API error listing comments: ${listRes.status} ${listRes.statusText}`
+      `GitHub API error listing comments: ${listRes.status} ${listRes.statusText}`,
     );
   }
   const comments = (await listRes.json()) as GitHubComment[];
@@ -98,22 +98,22 @@ export async function postOrUpdateComment(opts: {
     // 3a. Update the existing comment
     const updateRes = await fetchImpl(
       `${base}/repos/${owner}/${repo}/issues/comments/${existing.id}`,
-      { method: "PATCH", headers, body: JSON.stringify({ body }) }
+      { method: "PATCH", headers, body: JSON.stringify({ body }) },
     );
     if (!updateRes.ok) {
       throw new Error(
-        `GitHub API error updating comment ${existing.id}: ${updateRes.status} ${updateRes.statusText}`
+        `GitHub API error updating comment ${existing.id}: ${updateRes.status} ${updateRes.statusText}`,
       );
     }
   } else {
     // 3b. Create a new comment
     const createRes = await fetchImpl(
       `${base}/repos/${owner}/${repo}/issues/${prNumber}/comments`,
-      { method: "POST", headers, body: JSON.stringify({ body }) }
+      { method: "POST", headers, body: JSON.stringify({ body }) },
     );
     if (!createRes.ok) {
       throw new Error(
-        `GitHub API error creating comment: ${createRes.status} ${createRes.statusText}`
+        `GitHub API error creating comment: ${createRes.status} ${createRes.statusText}`,
       );
     }
   }
@@ -143,7 +143,7 @@ export function isValidRepository(value: string): boolean {
  */
 export async function tryPostGitHubComment(
   markdown: string,
-  fetchFn?: FetchFn
+  fetchFn?: FetchFn,
 ): Promise<void> {
   const token = process.env.GITHUB_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY;
@@ -153,7 +153,7 @@ export async function tryPostGitHubComment(
 
   if (!isValidRepository(repository)) {
     process.stderr.write(
-      `Warning: GITHUB_REPOSITORY "${repository}" is not in owner/repo format; skipping comment.\n`
+      `Warning: GITHUB_REPOSITORY "${repository}" is not in owner/repo format; skipping comment.\n`,
     );
     return;
   }

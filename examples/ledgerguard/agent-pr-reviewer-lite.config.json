@@ -1,12 +1,7 @@
 {
   "base": "main",
   "failOn": "high",
-  "ignore": [
-    "docs/**",
-    "README.md",
-    "CHANGELOG.md",
-    "**/*.md"
-  ],
+  "ignore": ["docs/**", "README.md", "CHANGELOG.md", "**/*.md"],
   "extraRiskPaths": [
     {
       "id": "ledgerguard-document-ingestion",

@@ -17,8 +17,8 @@ export const CONFIG_FILE_NAME = "agent-pr-reviewer-lite.config.json";
 // Private-Use-Area sentinels — safe because file paths never contain these.
 const T_DSTAR_SLASH = "\uE000"; // **/  → zero or more path-segment prefixes
 const T_SLASH_DSTAR = "\uE001"; // /**  → optional trailing path
-const T_DSTAR       = "\uE002"; // **   → any chars including /
-const T_STAR        = "\uE003"; // *    → any chars except /
+const T_DSTAR = "\uE002"; // **   → any chars including /
+const T_STAR = "\uE003"; // *    → any chars except /
 
 export function globToRegex(pattern: string): RegExp {
   // 1. Escape regex metacharacters, intentionally leaving * unescaped.
@@ -27,14 +27,14 @@ export function globToRegex(pattern: string): RegExp {
   // 2. Tokenise ** variants before * so replacements don't collide.
   p = p.replace(/\*\*\//g, T_DSTAR_SLASH);
   p = p.replace(/\/\*\*/g, T_SLASH_DSTAR);
-  p = p.replace(/\*\*/g,   T_DSTAR);
-  p = p.replace(/\*/g,     T_STAR);
+  p = p.replace(/\*\*/g, T_DSTAR);
+  p = p.replace(/\*/g, T_STAR);
 
   // 3. Expand tokens to regex fragments.
   p = p.replace(/\uE000/g, "(?:[^/]+/)*"); // **/ → zero or more `segment/`
-  p = p.replace(/\uE001/g, "(?:/.*)?");    // /** → optional `/rest`
-  p = p.replace(/\uE002/g, ".*");          // **  → anything
-  p = p.replace(/\uE003/g, "[^/]*");       // *   → no slashes
+  p = p.replace(/\uE001/g, "(?:/.*)?"); // /** → optional `/rest`
+  p = p.replace(/\uE002/g, ".*"); // **  → anything
+  p = p.replace(/\uE003/g, "[^/]*"); // *   → no slashes
 
   return new RegExp(`^${p}$`);
 }
@@ -61,20 +61,28 @@ function parseExtraRiskPath(item: unknown, index: number): ExtraRiskPath {
   const e = item as Record<string, unknown>;
 
   if (typeof e.id !== "string" || e.id.trim() === "") {
-    throw new Error(`config.extraRiskPaths[${index}].id must be a non-empty string`);
+    throw new Error(
+      `config.extraRiskPaths[${index}].id must be a non-empty string`,
+    );
   }
   if (typeof e.label !== "string" || e.label.trim() === "") {
-    throw new Error(`config.extraRiskPaths[${index}].label must be a non-empty string`);
+    throw new Error(
+      `config.extraRiskPaths[${index}].label must be a non-empty string`,
+    );
   }
   if (!isValidRiskLevel(e.severity)) {
-    throw new Error(`config.extraRiskPaths[${index}].severity must be "low", "medium", or "high"`);
+    throw new Error(
+      `config.extraRiskPaths[${index}].severity must be "low", "medium", or "high"`,
+    );
   }
   if (
     !Array.isArray(e.patterns) ||
     e.patterns.length === 0 ||
     e.patterns.some((p) => typeof p !== "string")
   ) {
-    throw new Error(`config.extraRiskPaths[${index}].patterns must be a non-empty array of strings`);
+    throw new Error(
+      `config.extraRiskPaths[${index}].patterns must be a non-empty array of strings`,
+    );
   }
 
   const entry: ExtraRiskPath = {

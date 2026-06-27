@@ -6,11 +6,11 @@
 
 ## Risk levels
 
-| Level | Numeric order | Meaning |
-|-------|---------------|---------|
-| `low` | 0 | No risky changes detected (or no findings) |
-| `medium` | 1 | Changes in areas that deserve a second look |
-| `high` | 2 | Changes in safety-critical areas that require human review before merge |
+| Level    | Numeric order | Meaning                                                                 |
+| -------- | ------------- | ----------------------------------------------------------------------- |
+| `low`    | 0             | No risky changes detected (or no findings)                              |
+| `medium` | 1             | Changes in areas that deserve a second look                             |
+| `high`   | 2             | Changes in safety-critical areas that require human review before merge |
 
 The order is defined in `src/types.ts`:
 
@@ -63,19 +63,19 @@ export function shouldFail(overallRisk: RiskLevel, failOn: RiskLevel): boolean {
 
 ## Built-in rule severities
 
-| Rule ID | Severity | Rationale |
-|---------|----------|-----------|
-| `auth-file-touched` | **high** | Auth bugs can lead to account takeover |
-| `billing-file-touched` | **high** | Billing bugs can cause financial loss |
-| `security-file-touched` | **high** | RLS / CORS / CSRF changes can expose data |
-| `migration-changed` | **high** | DB migrations are irreversible in production |
-| `test-deleted` | **high** | Deleting tests reduces confidence in future changes |
-| `env-var-file-changed` | medium | Env file changes can expose or break secrets |
-| `package-lock-changed` | medium | Lockfile changes can introduce supply chain issues |
-| `generated-file-edited` | medium | Manual edits to generated files drift from source of truth |
-| `public-route-changed` | medium | Route changes can break SEO, redirects, or user-facing flows |
-| `pricing-copy-changed` | medium | Pricing copy changes affect revenue and user expectations |
-| `dependency-added` | medium | New deps introduce maintenance and security surface |
+| Rule ID                 | Severity | Rationale                                                    |
+| ----------------------- | -------- | ------------------------------------------------------------ |
+| `auth-file-touched`     | **high** | Auth bugs can lead to account takeover                       |
+| `billing-file-touched`  | **high** | Billing bugs can cause financial loss                        |
+| `security-file-touched` | **high** | RLS / CORS / CSRF changes can expose data                    |
+| `migration-changed`     | **high** | DB migrations are irreversible in production                 |
+| `test-deleted`          | **high** | Deleting tests reduces confidence in future changes          |
+| `env-var-file-changed`  | medium   | Env file changes can expose or break secrets                 |
+| `package-lock-changed`  | medium   | Lockfile changes can introduce supply chain issues           |
+| `generated-file-edited` | medium   | Manual edits to generated files drift from source of truth   |
+| `public-route-changed`  | medium   | Route changes can break SEO, redirects, or user-facing flows |
+| `pricing-copy-changed`  | medium   | Pricing copy changes affect revenue and user expectations    |
+| `dependency-added`      | medium   | New deps introduce maintenance and security surface          |
 
 ## Custom rule scoring
 

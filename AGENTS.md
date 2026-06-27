@@ -10,20 +10,20 @@ Published as the `agent-pr-reviewer-lite` binary. Also importable as a library v
 
 Read `docs/ARCHITECTURE.md` before large changes. Respect module boundaries:
 
-| Module | Responsibility |
-|--------|----------------|
-| `src/cli.ts` | Commander CLI entry point — parses flags, loads config, calls core, selects reporter |
-| `src/rules.ts` | Deterministic risk rules — `DEFAULT_RULES`, `applyRules`, `buildExtraRules` |
-| `src/risk.ts` | `buildReport` orchestrator — combines files + rules into a `ReviewReport` |
-| `src/git.ts` | `getChangedFiles` — shells out to `git diff --name-status` (no shell injection) |
-| `src/config.ts` | Config file auto-discovery, JSON parsing, Zod-free validation, `globToRegex` |
-| `src/github.ts` | `postOrUpdateComment` — posts a PR comment via `fetch` (no Octokit) |
-| `src/types.ts` | All shared TypeScript types and the `RISK_LEVEL_ORDER` constant |
-| `src/index.ts` | Public API surface — re-exports types and functions for library consumers |
-| `src/reporters/text.ts` | Human-readable text report |
-| `src/reporters/json.ts` | Machine-readable JSON report |
-| `src/reporters/markdown.ts` | GitHub Markdown table report |
-| `tests/*` | Vitest coverage — unit, integration, edge-cases, and reporter tests |
+| Module                      | Responsibility                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| `src/cli.ts`                | Commander CLI entry point — parses flags, loads config, calls core, selects reporter |
+| `src/rules.ts`              | Deterministic risk rules — `DEFAULT_RULES`, `applyRules`, `buildExtraRules`          |
+| `src/risk.ts`               | `buildReport` orchestrator — combines files + rules into a `ReviewReport`            |
+| `src/git.ts`                | `getChangedFiles` — shells out to `git diff --name-status` (no shell injection)      |
+| `src/config.ts`             | Config file auto-discovery, JSON parsing, Zod-free validation, `globToRegex`         |
+| `src/github.ts`             | `postOrUpdateComment` — posts a PR comment via `fetch` (no Octokit)                  |
+| `src/types.ts`              | All shared TypeScript types and the `RISK_LEVEL_ORDER` constant                      |
+| `src/index.ts`              | Public API surface — re-exports types and functions for library consumers            |
+| `src/reporters/text.ts`     | Human-readable text report                                                           |
+| `src/reporters/json.ts`     | Machine-readable JSON report                                                         |
+| `src/reporters/markdown.ts` | GitHub Markdown table report                                                         |
+| `tests/*`                   | Vitest coverage — unit, integration, edge-cases, and reporter tests                  |
 
 ## Agent-editable areas
 
@@ -85,6 +85,7 @@ Risk levels: `low` < `medium` < `high`
 A finding is emitted when a changed file's path matches a rule's pattern. The overall risk is the maximum severity across all findings.
 
 `--fail-on` controls the exit-code threshold (default: `high`). Exit codes:
+
 - `0` — risk is below threshold, or no findings
 - `1` — risk meets or exceeds threshold
 - `2` — tool error (git failure, invalid config, unexpected runtime error)

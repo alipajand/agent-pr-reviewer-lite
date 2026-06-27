@@ -69,7 +69,7 @@ function makeRepo(): string {
 function writeAndCommit(
   dir: string,
   files: Record<string, string>,
-  message: string
+  message: string,
 ): void {
   for (const [rel, content] of Object.entries(files)) {
     const full = join(dir, rel);
@@ -110,9 +110,16 @@ describe("E2E CLI — temp git repo", () => {
   // ── 1. no risky changes → low risk → exit 0 ───────────────────────────────
   it("no risky changes → low risk → exit 0", () => {
     const repo = setup();
-    writeAndCommit(repo, { "utils/helpers.ts": "export const noop = () => {};\n" }, "add helper");
+    writeAndCommit(
+      repo,
+      { "utils/helpers.ts": "export const noop = () => {};\n" },
+      "add helper",
+    );
 
-    const { exitCode, stdout } = runCli(["--base", "HEAD~1", "--head", "HEAD"], repo);
+    const { exitCode, stdout } = runCli(
+      ["--base", "HEAD~1", "--head", "HEAD"],
+      repo,
+    );
 
     expect(exitCode).toBe(0);
     expect(stdout).toMatch(/low/i);
@@ -124,12 +131,12 @@ describe("E2E CLI — temp git repo", () => {
     writeAndCommit(
       repo,
       { "src/auth/session.ts": "export const getSession = () => null;\n" },
-      "add auth session"
+      "add auth session",
     );
 
     const { exitCode, stdout } = runCli(
       ["--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(1);
@@ -143,12 +150,12 @@ describe("E2E CLI — temp git repo", () => {
     writeAndCommit(
       repo,
       { "pnpm-lock.yaml": "lockfileVersion: '6.0'\n" },
-      "add lockfile"
+      "add lockfile",
     );
 
     const { exitCode, stdout } = runCli(
       ["--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(0);
@@ -161,12 +168,12 @@ describe("E2E CLI — temp git repo", () => {
     writeAndCommit(
       repo,
       { "pnpm-lock.yaml": "lockfileVersion: '6.0'\n" },
-      "add lockfile"
+      "add lockfile",
     );
 
     const { exitCode, stdout } = runCli(
       ["--base", "HEAD~1", "--head", "HEAD", "--fail-on", "medium"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(1);
@@ -187,7 +194,7 @@ describe("E2E CLI — temp git repo", () => {
     writeFileSync(
       configPath,
       JSON.stringify({ ignore: ["src/docs/**"] }),
-      "utf8"
+      "utf8",
     );
     git(["add", "-A"], repo);
     git(["commit", "-m", "add config"], repo);
@@ -196,12 +203,12 @@ describe("E2E CLI — temp git repo", () => {
     writeAndCommit(
       repo,
       { "src/docs/billing-guide.md": "# Billing guide\n" },
-      "add billing guide doc"
+      "add billing guide doc",
     );
 
     const { exitCode, stdout } = runCli(
       ["--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(0);
@@ -216,31 +223,37 @@ describe("E2E CLI — temp git repo", () => {
     writeAndCommit(
       repo,
       {
-        "package.json": JSON.stringify(
-          { name: "sample", version: "1.0.0", dependencies: {} },
-          null,
-          2
-        ) + "\n",
+        "package.json":
+          JSON.stringify(
+            { name: "sample", version: "1.0.0", dependencies: {} },
+            null,
+            2,
+          ) + "\n",
       },
-      "add package.json"
+      "add package.json",
     );
 
     // Now add a new dependency.
     writeAndCommit(
       repo,
       {
-        "package.json": JSON.stringify(
-          { name: "sample", version: "1.0.0", dependencies: { lodash: "^4.17.21" } },
-          null,
-          2
-        ) + "\n",
+        "package.json":
+          JSON.stringify(
+            {
+              name: "sample",
+              version: "1.0.0",
+              dependencies: { lodash: "^4.17.21" },
+            },
+            null,
+            2,
+          ) + "\n",
       },
-      "add lodash dependency"
+      "add lodash dependency",
     );
 
     const { exitCode, stdout } = runCli(
       ["--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high"],
-      repo
+      repo,
     );
 
     // dependency-added is medium severity → does not fail with --fail-on high.
@@ -254,7 +267,7 @@ describe("E2E CLI — temp git repo", () => {
 
     const { exitCode, stderr } = runCli(
       ["--base", "nonexistent-branch-xyz-abc", "--head", "HEAD"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(2);

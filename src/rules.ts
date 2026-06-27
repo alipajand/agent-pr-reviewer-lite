@@ -1,5 +1,10 @@
 import { globToRegex } from "./config.js";
-import type { ChangedFile, ExtraRiskPath, RiskFinding, RiskLevel } from "./types.js";
+import type {
+  ChangedFile,
+  ExtraRiskPath,
+  RiskFinding,
+  RiskLevel,
+} from "./types.js";
 
 export type Rule = {
   id: string;
@@ -17,11 +22,7 @@ function matchesAny(path: string, patterns: RegExp[]): boolean {
   return patterns.some((p) => p.test(path));
 }
 
-function finding(
-  rule: Rule,
-  file: ChangedFile,
-  reason: string
-): RiskFinding {
+function finding(rule: Rule, file: ChangedFile, reason: string): RiskFinding {
   return {
     id: rule.id,
     label: rule.label,
@@ -331,11 +332,7 @@ export const DEFAULT_RULES: Rule[] = [
       if (added.length === 0) return null;
 
       return added.map((name) =>
-        finding(
-          this as Rule,
-          file,
-          `Added dependency: ${name}`
-        )
+        finding(this as Rule, file, `Added dependency: ${name}`),
       );
     },
   },
@@ -347,7 +344,7 @@ export const DEFAULT_RULES: Rule[] = [
 
 export function applyRules(
   files: ChangedFile[],
-  rules: Rule[] = DEFAULT_RULES
+  rules: Rule[] = DEFAULT_RULES,
 ): RiskFinding[] {
   const findings: RiskFinding[] = [];
 

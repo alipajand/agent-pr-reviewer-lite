@@ -1,4 +1,9 @@
-import type { ChangedFile, ReviewReport, RiskFinding, RiskLevel } from "./types.js";
+import type {
+  ChangedFile,
+  ReviewReport,
+  RiskFinding,
+  RiskLevel,
+} from "./types.js";
 import { RISK_LEVEL_ORDER } from "./types.js";
 import { applyRules, DEFAULT_RULES } from "./rules.js";
 import type { Rule } from "./rules.js";
@@ -20,7 +25,7 @@ export function buildReport(
   base: string,
   head: string,
   files: ChangedFile[],
-  rules: Rule[] = DEFAULT_RULES
+  rules: Rule[] = DEFAULT_RULES,
 ): ReviewReport {
   const findings = applyRules(files, rules);
   const overallRisk = computeOverallRisk(findings);
@@ -34,9 +39,6 @@ export function buildReport(
   };
 }
 
-export function shouldFail(
-  overallRisk: RiskLevel,
-  failOn: RiskLevel
-): boolean {
+export function shouldFail(overallRisk: RiskLevel, failOn: RiskLevel): boolean {
   return RISK_LEVEL_ORDER[overallRisk] >= RISK_LEVEL_ORDER[failOn];
 }

@@ -60,11 +60,15 @@ describe("getChangedFiles — no shell injection via --base or --head", () => {
       // getChangedFiles must throw. The important assertion is that it throws
       // with a "Failed to run git diff" message (git process exited non-zero),
       // NOT with an unrelated error or filesystem side-effect.
-      expect(() => getChangedFiles(payload, "HEAD")).toThrow(/Failed to run git diff/);
+      expect(() => getChangedFiles(payload, "HEAD")).toThrow(
+        /Failed to run git diff/,
+      );
     });
 
     it(`does not execute shell code when --head is: ${JSON.stringify(payload)}`, () => {
-      expect(() => getChangedFiles("main", payload)).toThrow(/Failed to run git diff/);
+      expect(() => getChangedFiles("main", payload)).toThrow(
+        /Failed to run git diff/,
+      );
     });
   }
 

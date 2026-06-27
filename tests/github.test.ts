@@ -146,7 +146,7 @@ describe("readEventPayload", () => {
   function writeEvent(content: string): string {
     const path = join(
       tmpdir(),
-      `apr-event-${Date.now()}-${Math.random().toString(36).slice(2)}.json`
+      `apr-event-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
     );
     writeFileSync(path, content, "utf8");
     created.push(path);
@@ -207,13 +207,18 @@ describe("buildCommentBody", () => {
 
 describe("postOrUpdateComment — creates new comment", () => {
   it("calls list then POST when no existing bot comment is found", async () => {
-    const fetchFn = vi.fn()
+    const fetchFn = vi
+      .fn()
       .mockResolvedValueOnce({
-        ok: true, status: 200, statusText: "OK",
-        json: async () => [],  // empty list — no existing comments
+        ok: true,
+        status: 200,
+        statusText: "OK",
+        json: async () => [], // empty list — no existing comments
       })
       .mockResolvedValueOnce({
-        ok: true, status: 201, statusText: "Created",
+        ok: true,
+        status: 201,
+        statusText: "Created",
         json: async () => ({ id: 1, body: "new comment" }),
       }) as unknown as typeof fetch;
 
@@ -228,24 +233,40 @@ describe("postOrUpdateComment — creates new comment", () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
 
     // First call: LIST comments
-    const [listUrl, listOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(listUrl).toBe("https://api.github.com/repos/owner/repo/issues/7/comments");
+    const [listUrl, listOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(listUrl).toBe(
+      "https://api.github.com/repos/owner/repo/issues/7/comments",
+    );
     expect(listOpts.headers?.Authorization).toBe("Bearer ghs_token");
 
     // Second call: POST new comment
-    const [createUrl, createOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[1];
-    expect(createUrl).toBe("https://api.github.com/repos/owner/repo/issues/7/comments");
+    const [createUrl, createOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock
+      .calls[1];
+    expect(createUrl).toBe(
+      "https://api.github.com/repos/owner/repo/issues/7/comments",
+    );
     expect(createOpts.method).toBe("POST");
-    expect(JSON.parse(createOpts.body as string)).toEqual({ body: "comment body" });
+    expect(JSON.parse(createOpts.body as string)).toEqual({
+      body: "comment body",
+    });
   });
 
   it("sends the correct Accept and API version headers", async () => {
-    const fetchFn = vi.fn()
+    const fetchFn = vi
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) as unknown as typeof fetch;
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      }) as unknown as typeof fetch;
 
     await postOrUpdateComment({
-      token: "tok", repository: "a/b", prNumber: 1, body: "x", fetchFn,
+      token: "tok",
+      repository: "a/b",
+      prNumber: 1,
+      body: "x",
+      fetchFn,
     });
 
     const [, listOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -263,32 +284,52 @@ describe("postOrUpdateComment — updates existing comment", () => {
     const existingComments = [
       { id: 99, body: `${COMMENT_MARKER}\n## Old report` },
     ];
-    const fetchFn = vi.fn()
+    const fetchFn = vi
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => existingComments })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) as unknown as typeof fetch;
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      }) as unknown as typeof fetch;
 
     await postOrUpdateComment({
-      token: "tok", repository: "owner/repo", prNumber: 5,
-      body: "updated body", fetchFn,
+      token: "tok",
+      repository: "owner/repo",
+      prNumber: 5,
+      body: "updated body",
+      fetchFn,
     });
 
     expect(fetchFn).toHaveBeenCalledTimes(2);
-    const [patchUrl, patchOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[1];
-    expect(patchUrl).toBe("https://api.github.com/repos/owner/repo/issues/comments/99");
+    const [patchUrl, patchOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock
+      .calls[1];
+    expect(patchUrl).toBe(
+      "https://api.github.com/repos/owner/repo/issues/comments/99",
+    );
     expect(patchOpts.method).toBe("PATCH");
-    expect(JSON.parse(patchOpts.body as string)).toEqual({ body: "updated body" });
+    expect(JSON.parse(patchOpts.body as string)).toEqual({
+      body: "updated body",
+    });
   });
 
   it("ignores non-bot comments and creates a new comment when marker absent", async () => {
     const existingComments = [
       { id: 55, body: "A human comment without the marker" },
     ];
-    const fetchFn = vi.fn()
+    const fetchFn = vi
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => existingComments })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) as unknown as typeof fetch;
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      }) as unknown as typeof fetch;
 
     await postOrUpdateComment({
-      token: "tok", repository: "a/b", prNumber: 3, body: "new", fetchFn,
+      token: "tok",
+      repository: "a/b",
+      prNumber: 3,
+      body: "new",
+      fetchFn,
     });
 
     const [, createOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[1];
@@ -304,27 +345,60 @@ describe("postOrUpdateComment — error handling", () => {
   it("throws when the list request fails", async () => {
     const fetchFn = makeFetchFail(403, "Forbidden");
     await expect(
-      postOrUpdateComment({ token: "t", repository: "a/b", prNumber: 1, body: "x", fetchFn })
+      postOrUpdateComment({
+        token: "t",
+        repository: "a/b",
+        prNumber: 1,
+        body: "x",
+        fetchFn,
+      }),
     ).rejects.toThrow("403");
   });
 
   it("throws when the create request fails", async () => {
-    const fetchFn = vi.fn()
+    const fetchFn = vi
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      .mockResolvedValueOnce({ ok: false, status: 422, statusText: "Unprocessable Entity", json: async () => ({}) }) as unknown as typeof fetch;
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        statusText: "Unprocessable Entity",
+        json: async () => ({}),
+      }) as unknown as typeof fetch;
 
     await expect(
-      postOrUpdateComment({ token: "t", repository: "a/b", prNumber: 1, body: "x", fetchFn })
+      postOrUpdateComment({
+        token: "t",
+        repository: "a/b",
+        prNumber: 1,
+        body: "x",
+        fetchFn,
+      }),
     ).rejects.toThrow("422");
   });
 
   it("throws when the update request fails", async () => {
-    const fetchFn = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => [{ id: 1, body: COMMENT_MARKER }] })
-      .mockResolvedValueOnce({ ok: false, status: 404, statusText: "Not Found", json: async () => ({}) }) as unknown as typeof fetch;
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => [{ id: 1, body: COMMENT_MARKER }],
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: "Not Found",
+        json: async () => ({}),
+      }) as unknown as typeof fetch;
 
     await expect(
-      postOrUpdateComment({ token: "t", repository: "a/b", prNumber: 1, body: "x", fetchFn })
+      postOrUpdateComment({
+        token: "t",
+        repository: "a/b",
+        prNumber: 1,
+        body: "x",
+        fetchFn,
+      }),
     ).rejects.toThrow("404");
   });
 });
@@ -392,13 +466,15 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
     process.env.GITHUB_EVENT_PATH = eventFile;
 
     const fetchFn = makeFetchOk([]);
-    const stderrWrite = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const stderrWrite = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
 
     await tryPostGitHubComment("## markdown", fetchFn);
 
     expect(fetchFn).not.toHaveBeenCalled();
     expect(stderrWrite).toHaveBeenCalledWith(
-      expect.stringContaining("owner/repo format")
+      expect.stringContaining("owner/repo format"),
     );
 
     stderrWrite.mockRestore();
@@ -412,7 +488,9 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
     process.env.GITHUB_EVENT_PATH = eventFile;
 
     const fetchFn = makeFetchOk([]);
-    const stderrWrite = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    const stderrWrite = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
 
     await tryPostGitHubComment("## markdown", fetchFn);
 
@@ -428,9 +506,13 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
     process.env.GITHUB_REPOSITORY = "owner/repo";
     process.env.GITHUB_EVENT_PATH = eventFile;
 
-    const fetchFn = vi.fn()
+    const fetchFn = vi
+      .fn()
       .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) }) as unknown as typeof fetch;
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({}),
+      }) as unknown as typeof fetch;
 
     await tryPostGitHubComment("## Agent PR Risk: Low", fetchFn);
     expect(fetchFn).toHaveBeenCalledTimes(2);

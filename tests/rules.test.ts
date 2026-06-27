@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { applyRules, DEFAULT_RULES, extractAddedDependencies } from "../src/rules.js";
+import {
+  applyRules,
+  DEFAULT_RULES,
+  extractAddedDependencies,
+} from "../src/rules.js";
 import { buildReport, shouldFail } from "../src/risk.js";
 import type { ChangedFile } from "../src/types.js";
 
@@ -10,7 +14,7 @@ import type { ChangedFile } from "../src/types.js";
 function file(
   path: string,
   status: ChangedFile["status"] = "modified",
-  addedLines?: string[]
+  addedLines?: string[],
 ): ChangedFile {
   return { path, status, addedLines };
 }
@@ -18,11 +22,12 @@ function file(
 function hasRule(
   files: ChangedFile[],
   ruleId: string,
-  severity?: string
+  severity?: string,
 ): boolean {
   const findings = applyRules(files, DEFAULT_RULES);
   return findings.some(
-    (f) => f.id === ruleId && (severity === undefined || f.severity === severity)
+    (f) =>
+      f.id === ruleId && (severity === undefined || f.severity === severity),
   );
 }
 
@@ -32,39 +37,57 @@ function hasRule(
 
 describe("auth-file-touched", () => {
   it("triggers on /auth/ in path", () => {
-    expect(hasRule([file("src/auth/login.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/auth/login.ts")], "auth-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on auth.ts filename", () => {
-    expect(hasRule([file("src/lib/auth.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/lib/auth.ts")], "auth-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on session.ts filename", () => {
-    expect(hasRule([file("lib/session.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(hasRule([file("lib/session.ts")], "auth-file-touched", "high")).toBe(
+      true,
+    );
   });
 
   it("triggers on middleware.ts", () => {
-    expect(hasRule([file("src/middleware.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/middleware.ts")], "auth-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on jwt in path", () => {
-    expect(hasRule([file("src/utils/jwtHelper.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/utils/jwtHelper.ts")], "auth-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on supabase/auth path", () => {
-    expect(hasRule([file("supabase/auth/config.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("supabase/auth/config.ts")], "auth-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on clerk path", () => {
-    expect(hasRule([file("src/clerk/webhooks.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/clerk/webhooks.ts")], "auth-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on next-auth path", () => {
-    expect(hasRule([file("src/next-auth/options.ts")], "auth-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/next-auth/options.ts")], "auth-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("does NOT trigger on unrelated file", () => {
-    expect(hasRule([file("src/components/Button.tsx")], "auth-file-touched")).toBe(false);
+    expect(
+      hasRule([file("src/components/Button.tsx")], "auth-file-touched"),
+    ).toBe(false);
   });
 
   it("has requiredReview label 'auth/session'", () => {
@@ -80,35 +103,59 @@ describe("auth-file-touched", () => {
 
 describe("billing-file-touched", () => {
   it("triggers on /billing/ path", () => {
-    expect(hasRule([file("src/billing/plans.ts")], "billing-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/billing/plans.ts")], "billing-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on /stripe/ path", () => {
-    expect(hasRule([file("src/stripe/webhooks.ts")], "billing-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/stripe/webhooks.ts")], "billing-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on stripe.ts filename", () => {
-    expect(hasRule([file("lib/stripe.ts")], "billing-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("lib/stripe.ts")], "billing-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on checkout in path", () => {
-    expect(hasRule([file("src/pages/checkout.tsx")], "billing-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/pages/checkout.tsx")], "billing-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on subscription in path", () => {
-    expect(hasRule([file("src/hooks/useSubscription.ts")], "billing-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/hooks/useSubscription.ts")],
+        "billing-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on invoice in path", () => {
-    expect(hasRule([file("src/api/invoice.ts")], "billing-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/api/invoice.ts")], "billing-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on payment in path", () => {
-    expect(hasRule([file("src/services/paymentService.ts")], "billing-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/services/paymentService.ts")],
+        "billing-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("does NOT trigger on unrelated file", () => {
-    expect(hasRule([file("src/utils/format.ts")], "billing-file-touched")).toBe(false);
+    expect(hasRule([file("src/utils/format.ts")], "billing-file-touched")).toBe(
+      false,
+    );
   });
 
   it("has requiredReview label 'billing/payments'", () => {
@@ -124,39 +171,81 @@ describe("billing-file-touched", () => {
 
 describe("security-file-touched", () => {
   it("triggers on /security/ path", () => {
-    expect(hasRule([file("src/security/headers.ts")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/security/headers.ts")],
+        "security-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on rls in path", () => {
-    expect(hasRule([file("supabase/rls-policies.sql")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("supabase/rls-policies.sql")],
+        "security-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on policy in path", () => {
-    expect(hasRule([file("src/access/policy.ts")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/access/policy.ts")], "security-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("triggers on permissions in path", () => {
-    expect(hasRule([file("src/utils/permissions.ts")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/utils/permissions.ts")],
+        "security-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on access-control in path", () => {
-    expect(hasRule([file("src/lib/access-control.ts")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/lib/access-control.ts")],
+        "security-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on rate-limit in path", () => {
-    expect(hasRule([file("src/middleware/rate-limit.ts")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/middleware/rate-limit.ts")],
+        "security-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on csrf in path", () => {
-    expect(hasRule([file("src/middleware/csrf.ts")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/middleware/csrf.ts")],
+        "security-file-touched",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on cors in path", () => {
-    expect(hasRule([file("src/config/cors.ts")], "security-file-touched", "high")).toBe(true);
+    expect(
+      hasRule([file("src/config/cors.ts")], "security-file-touched", "high"),
+    ).toBe(true);
   });
 
   it("does NOT trigger on unrelated file", () => {
-    expect(hasRule([file("src/components/Header.tsx")], "security-file-touched")).toBe(false);
+    expect(
+      hasRule([file("src/components/Header.tsx")], "security-file-touched"),
+    ).toBe(false);
   });
 
   it("has requiredReview label 'security/access-control'", () => {
@@ -172,23 +261,45 @@ describe("security-file-touched", () => {
 
 describe("migration-changed", () => {
   it("triggers on supabase/migrations/ path", () => {
-    expect(hasRule([file("supabase/migrations/001_create_users.sql")], "migration-changed", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("supabase/migrations/001_create_users.sql")],
+        "migration-changed",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on migrations/ path", () => {
-    expect(hasRule([file("migrations/20240101_add_index.sql")], "migration-changed", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("migrations/20240101_add_index.sql")],
+        "migration-changed",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on prisma/migrations/ path", () => {
-    expect(hasRule([file("prisma/migrations/0001_init/migration.sql")], "migration-changed", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("prisma/migrations/0001_init/migration.sql")],
+        "migration-changed",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on .sql under a migrations folder", () => {
-    expect(hasRule([file("db/migrations/schema.sql")], "migration-changed", "high")).toBe(true);
+    expect(
+      hasRule([file("db/migrations/schema.sql")], "migration-changed", "high"),
+    ).toBe(true);
   });
 
   it("does NOT trigger on a non-migration SQL file", () => {
-    expect(hasRule([file("src/queries/users.sql")], "migration-changed")).toBe(false);
+    expect(hasRule([file("src/queries/users.sql")], "migration-changed")).toBe(
+      false,
+    );
   });
 
   it("has requiredReview label 'database migration'", () => {
@@ -204,35 +315,64 @@ describe("migration-changed", () => {
 
 describe("test-deleted", () => {
   it("triggers when a .test. file is deleted", () => {
-    expect(hasRule([file("src/utils/format.test.ts", "deleted")], "test-deleted", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/utils/format.test.ts", "deleted")],
+        "test-deleted",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers when a .spec. file is deleted", () => {
-    expect(hasRule([file("src/api/users.spec.ts", "deleted")], "test-deleted", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/api/users.spec.ts", "deleted")],
+        "test-deleted",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers when a __tests__ file is deleted", () => {
-    expect(hasRule([file("src/__tests__/helper.ts", "deleted")], "test-deleted", "high")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/__tests__/helper.ts", "deleted")],
+        "test-deleted",
+        "high",
+      ),
+    ).toBe(true);
   });
 
   it("triggers when a file in /tests/ is deleted", () => {
-    expect(hasRule([file("tests/rules.test.ts", "deleted")], "test-deleted", "high")).toBe(true);
+    expect(
+      hasRule([file("tests/rules.test.ts", "deleted")], "test-deleted", "high"),
+    ).toBe(true);
   });
 
   it("triggers when a file in /test/ is deleted", () => {
-    expect(hasRule([file("test/unit/parser.ts", "deleted")], "test-deleted", "high")).toBe(true);
+    expect(
+      hasRule([file("test/unit/parser.ts", "deleted")], "test-deleted", "high"),
+    ).toBe(true);
   });
 
   it("does NOT trigger when a test file is modified (not deleted)", () => {
-    expect(hasRule([file("src/utils/format.test.ts", "modified")], "test-deleted")).toBe(false);
+    expect(
+      hasRule([file("src/utils/format.test.ts", "modified")], "test-deleted"),
+    ).toBe(false);
   });
 
   it("does NOT trigger when a non-test file is deleted", () => {
-    expect(hasRule([file("src/utils/format.ts", "deleted")], "test-deleted")).toBe(false);
+    expect(
+      hasRule([file("src/utils/format.ts", "deleted")], "test-deleted"),
+    ).toBe(false);
   });
 
   it("has requiredReview label 'deleted tests'", () => {
-    const findings = applyRules([file("src/foo.test.ts", "deleted")], DEFAULT_RULES);
+    const findings = applyRules(
+      [file("src/foo.test.ts", "deleted")],
+      DEFAULT_RULES,
+    );
     const f = findings.find((x) => x.id === "test-deleted");
     expect(f?.requiredReview).toBe("deleted tests");
   });
@@ -244,35 +384,59 @@ describe("test-deleted", () => {
 
 describe("env-var-file-changed", () => {
   it("triggers on .env", () => {
-    expect(hasRule([file(".env")], "env-var-file-changed", "medium")).toBe(true);
+    expect(hasRule([file(".env")], "env-var-file-changed", "medium")).toBe(
+      true,
+    );
   });
 
   it("triggers on .env.example", () => {
-    expect(hasRule([file(".env.example")], "env-var-file-changed", "medium")).toBe(true);
+    expect(
+      hasRule([file(".env.example")], "env-var-file-changed", "medium"),
+    ).toBe(true);
   });
 
   it("triggers on .env.local", () => {
-    expect(hasRule([file(".env.local")], "env-var-file-changed", "medium")).toBe(true);
+    expect(
+      hasRule([file(".env.local")], "env-var-file-changed", "medium"),
+    ).toBe(true);
   });
 
   it("triggers on .env.production", () => {
-    expect(hasRule([file(".env.production")], "env-var-file-changed", "medium")).toBe(true);
+    expect(
+      hasRule([file(".env.production")], "env-var-file-changed", "medium"),
+    ).toBe(true);
   });
 
   it("triggers on .env.development", () => {
-    expect(hasRule([file(".env.development")], "env-var-file-changed", "medium")).toBe(true);
+    expect(
+      hasRule([file(".env.development")], "env-var-file-changed", "medium"),
+    ).toBe(true);
   });
 
   it("triggers on file containing env.example in name", () => {
-    expect(hasRule([file("config/env.example.ts")], "env-var-file-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("config/env.example.ts")],
+        "env-var-file-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on file containing environment in name", () => {
-    expect(hasRule([file("src/config/environment.ts")], "env-var-file-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/config/environment.ts")],
+        "env-var-file-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("does NOT trigger on unrelated file", () => {
-    expect(hasRule([file("src/components/Env.tsx")], "env-var-file-changed")).toBe(false);
+    expect(
+      hasRule([file("src/components/Env.tsx")], "env-var-file-changed"),
+    ).toBe(false);
   });
 
   it("has requiredReview label 'environment variables'", () => {
@@ -288,19 +452,27 @@ describe("env-var-file-changed", () => {
 
 describe("package-lock-changed", () => {
   it("triggers on package-lock.json", () => {
-    expect(hasRule([file("package-lock.json")], "package-lock-changed", "medium")).toBe(true);
+    expect(
+      hasRule([file("package-lock.json")], "package-lock-changed", "medium"),
+    ).toBe(true);
   });
 
   it("triggers on pnpm-lock.yaml", () => {
-    expect(hasRule([file("pnpm-lock.yaml")], "package-lock-changed", "medium")).toBe(true);
+    expect(
+      hasRule([file("pnpm-lock.yaml")], "package-lock-changed", "medium"),
+    ).toBe(true);
   });
 
   it("triggers on yarn.lock", () => {
-    expect(hasRule([file("yarn.lock")], "package-lock-changed", "medium")).toBe(true);
+    expect(hasRule([file("yarn.lock")], "package-lock-changed", "medium")).toBe(
+      true,
+    );
   });
 
   it("triggers on bun.lockb", () => {
-    expect(hasRule([file("bun.lockb")], "package-lock-changed", "medium")).toBe(true);
+    expect(hasRule([file("bun.lockb")], "package-lock-changed", "medium")).toBe(
+      true,
+    );
   });
 
   it("does NOT trigger on package.json itself", () => {
@@ -320,39 +492,86 @@ describe("package-lock-changed", () => {
 
 describe("generated-file-edited", () => {
   it("triggers on file containing 'generated' in path", () => {
-    expect(hasRule([file("src/types/generated.ts")], "generated-file-edited", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/types/generated.ts")],
+        "generated-file-edited",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on __generated__ directory", () => {
-    expect(hasRule([file("src/__generated__/schema.ts")], "generated-file-edited", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/__generated__/schema.ts")],
+        "generated-file-edited",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on .generated.ts extension", () => {
-    expect(hasRule([file("src/api/client.generated.ts")], "generated-file-edited", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/api/client.generated.ts")],
+        "generated-file-edited",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on .generated.tsx extension", () => {
-    expect(hasRule([file("src/components/Form.generated.tsx")], "generated-file-edited", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/components/Form.generated.tsx")],
+        "generated-file-edited",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on .gen.ts extension", () => {
-    expect(hasRule([file("src/types/schema.gen.ts")], "generated-file-edited", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/types/schema.gen.ts")],
+        "generated-file-edited",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on .gen.tsx extension", () => {
-    expect(hasRule([file("src/hooks/query.gen.tsx")], "generated-file-edited", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/hooks/query.gen.tsx")],
+        "generated-file-edited",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on src/graphql/generated/ path", () => {
-    expect(hasRule([file("src/graphql/generated/types.ts")], "generated-file-edited", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/graphql/generated/types.ts")],
+        "generated-file-edited",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("does NOT trigger on regular source file", () => {
-    expect(hasRule([file("src/utils/helpers.ts")], "generated-file-edited")).toBe(false);
+    expect(
+      hasRule([file("src/utils/helpers.ts")], "generated-file-edited"),
+    ).toBe(false);
   });
 
   it("has requiredReview label 'generated file'", () => {
-    const findings = applyRules([file("src/graphql/generated/types.ts")], DEFAULT_RULES);
+    const findings = applyRules(
+      [file("src/graphql/generated/types.ts")],
+      DEFAULT_RULES,
+    );
     const f = findings.find((x) => x.id === "generated-file-edited");
     expect(f?.requiredReview).toBe("generated file");
   });
@@ -364,31 +583,65 @@ describe("generated-file-edited", () => {
 
 describe("public-route-changed", () => {
   it("triggers on app/**/page.tsx", () => {
-    expect(hasRule([file("app/dashboard/page.tsx")], "public-route-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("app/dashboard/page.tsx")],
+        "public-route-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on app/**/layout.tsx", () => {
-    expect(hasRule([file("app/dashboard/layout.tsx")], "public-route-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("app/dashboard/layout.tsx")],
+        "public-route-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on pages/ directory", () => {
-    expect(hasRule([file("pages/index.tsx")], "public-route-changed", "medium")).toBe(true);
+    expect(
+      hasRule([file("pages/index.tsx")], "public-route-changed", "medium"),
+    ).toBe(true);
   });
 
   it("triggers on src/app/**/page.tsx", () => {
-    expect(hasRule([file("src/app/settings/page.tsx")], "public-route-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/app/settings/page.tsx")],
+        "public-route-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on src/app/**/layout.tsx", () => {
-    expect(hasRule([file("src/app/settings/layout.tsx")], "public-route-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/app/settings/layout.tsx")],
+        "public-route-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on src/pages/ directory", () => {
-    expect(hasRule([file("src/pages/api/users.ts")], "public-route-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/pages/api/users.ts")],
+        "public-route-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("does NOT trigger on a component file", () => {
-    expect(hasRule([file("src/components/Layout.tsx")], "public-route-changed")).toBe(false);
+    expect(
+      hasRule([file("src/components/Layout.tsx")], "public-route-changed"),
+    ).toBe(false);
   });
 
   it("has requiredReview label 'public route'", () => {
@@ -404,35 +657,79 @@ describe("public-route-changed", () => {
 
 describe("pricing-copy-changed", () => {
   it("triggers on pricing in path", () => {
-    expect(hasRule([file("src/pages/pricing.tsx")], "pricing-copy-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/pages/pricing.tsx")],
+        "pricing-copy-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on plans in path", () => {
-    expect(hasRule([file("src/components/Plans.tsx")], "pricing-copy-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/components/Plans.tsx")],
+        "pricing-copy-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on checkout in path", () => {
-    expect(hasRule([file("app/checkout/page.tsx")], "pricing-copy-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("app/checkout/page.tsx")],
+        "pricing-copy-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on subscription in path", () => {
-    expect(hasRule([file("src/copy/subscription-faq.md")], "pricing-copy-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/copy/subscription-faq.md")],
+        "pricing-copy-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on billing in path", () => {
-    expect(hasRule([file("src/marketing/billing-overview.tsx")], "pricing-copy-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/marketing/billing-overview.tsx")],
+        "pricing-copy-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on marketing in path", () => {
-    expect(hasRule([file("src/marketing/hero.tsx")], "pricing-copy-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/marketing/hero.tsx")],
+        "pricing-copy-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("triggers on landing in path", () => {
-    expect(hasRule([file("src/pages/landing.tsx")], "pricing-copy-changed", "medium")).toBe(true);
+    expect(
+      hasRule(
+        [file("src/pages/landing.tsx")],
+        "pricing-copy-changed",
+        "medium",
+      ),
+    ).toBe(true);
   });
 
   it("does NOT trigger on unrelated file", () => {
-    expect(hasRule([file("src/utils/math.ts")], "pricing-copy-changed")).toBe(false);
+    expect(hasRule([file("src/utils/math.ts")], "pricing-copy-changed")).toBe(
+      false,
+    );
   });
 
   it("has requiredReview label 'pricing/public copy'", () => {
@@ -478,10 +775,7 @@ describe("extractAddedDependencies", () => {
   });
 
   it("ignores lines outside dep sections", () => {
-    const addedLines = [
-      '  "name": "my-app"',
-      '  "version": "1.0.0"',
-    ];
+    const addedLines = ['  "name": "my-app"', '  "version": "1.0.0"'];
     expect(extractAddedDependencies(addedLines)).toEqual([]);
   });
 
@@ -526,7 +820,7 @@ describe("dependency-added rule", () => {
       ],
     };
     const findings = applyRules([changedFile], DEFAULT_RULES).filter(
-      (f) => f.id === "dependency-added"
+      (f) => f.id === "dependency-added",
     );
     expect(findings).toHaveLength(2);
     expect(findings[0].reason).toBe("Added dependency: axios");
@@ -542,7 +836,7 @@ describe("dependency-added rule", () => {
       addedLines: ['  "version": "2.0.0"'],
     };
     const findings = applyRules([changedFile], DEFAULT_RULES).filter(
-      (f) => f.id === "dependency-added"
+      (f) => f.id === "dependency-added",
     );
     expect(findings).toHaveLength(0);
   });
@@ -554,15 +848,18 @@ describe("dependency-added rule", () => {
       addedLines: ['  "dependencies": {', '    "axios": "^1.0.0"', "  }"],
     };
     const findings = applyRules([changedFile], DEFAULT_RULES).filter(
-      (f) => f.id === "dependency-added"
+      (f) => f.id === "dependency-added",
     );
     expect(findings).toHaveLength(0);
   });
 
   it("produces no findings when addedLines is undefined", () => {
-    const changedFile: ChangedFile = { path: "package.json", status: "modified" };
+    const changedFile: ChangedFile = {
+      path: "package.json",
+      status: "modified",
+    };
     const findings = applyRules([changedFile], DEFAULT_RULES).filter(
-      (f) => f.id === "dependency-added"
+      (f) => f.id === "dependency-added",
     );
     expect(findings).toHaveLength(0);
   });

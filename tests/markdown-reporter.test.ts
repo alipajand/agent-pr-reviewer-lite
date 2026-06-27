@@ -44,9 +44,15 @@ const mediumFinding: RiskFinding = {
 
 function makeReport(
   findings: RiskFinding[],
-  overallRisk: ReviewReport["overallRisk"] = "high"
+  overallRisk: ReviewReport["overallRisk"] = "high",
 ): ReviewReport {
-  return { base: "main", head: "HEAD", overallRisk, totalFiles: findings.length, findings };
+  return {
+    base: "main",
+    head: "HEAD",
+    overallRisk,
+    totalFiles: findings.length,
+    findings,
+  };
 }
 
 const failedOpts: RenderOptions = { failOn: "high", result: "failed" };
@@ -64,7 +70,10 @@ describe("renderMarkdown — heading", () => {
   });
 
   it("capitalizes Medium", () => {
-    const out = renderMarkdown(makeReport([mediumFinding], "medium"), mediumOpts);
+    const out = renderMarkdown(
+      makeReport([mediumFinding], "medium"),
+      mediumOpts,
+    );
     expect(out).toMatch(/^## Agent PR Risk: Medium/);
   });
 
@@ -103,7 +112,7 @@ describe("renderMarkdown — no findings", () => {
         "### CI result",
         "- fail-on: high",
         "- result: passed",
-      ].join("\n")
+      ].join("\n"),
     );
   });
 });
@@ -139,7 +148,10 @@ describe("renderMarkdown — findings table", () => {
   });
 
   it("medium severity is capitalized", () => {
-    const out = renderMarkdown(makeReport([mediumFinding], "medium"), mediumOpts);
+    const out = renderMarkdown(
+      makeReport([mediumFinding], "medium"),
+      mediumOpts,
+    );
     expect(out).toContain("| Medium |");
   });
 
@@ -245,7 +257,10 @@ describe("renderMarkdown — CI result", () => {
   });
 
   it("emits fail-on: medium when configured", () => {
-    const out = renderMarkdown(makeReport([mediumFinding], "medium"), mediumOpts);
+    const out = renderMarkdown(
+      makeReport([mediumFinding], "medium"),
+      mediumOpts,
+    );
     expect(out).toContain("- fail-on: medium");
     expect(out).toContain("- result: failed");
   });
@@ -257,7 +272,10 @@ describe("renderMarkdown — CI result", () => {
 
 describe("renderMarkdown — exact output snapshot", () => {
   it("matches spec example for findings present", () => {
-    const report = makeReport([authFinding, migrationFinding, depFinding], "high");
+    const report = makeReport(
+      [authFinding, migrationFinding, depFinding],
+      "high",
+    );
     const out = renderMarkdown(report, failedOpts);
     expect(out).toBe(
       [
@@ -275,7 +293,7 @@ describe("renderMarkdown — exact output snapshot", () => {
         "### CI result",
         "- fail-on: high",
         "- result: failed",
-      ].join("\n")
+      ].join("\n"),
     );
   });
 });

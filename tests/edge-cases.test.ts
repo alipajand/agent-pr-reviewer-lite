@@ -10,7 +10,7 @@ import type { ChangedFile } from "../src/types.js";
 function file(
   path: string,
   status: ChangedFile["status"] = "modified",
-  opts: Partial<ChangedFile> = {}
+  opts: Partial<ChangedFile> = {},
 ): ChangedFile {
   return { path, status, ...opts };
 }
@@ -29,12 +29,16 @@ function ruleIds(files: ChangedFile[]): string[] {
 
 describe("edge case 1: lockfile changed without package.json", () => {
   it("pnpm-lock.yaml alone triggers package-lock-changed", () => {
-    expect(hasRule([file("pnpm-lock.yaml")], "package-lock-changed")).toBe(true);
+    expect(hasRule([file("pnpm-lock.yaml")], "package-lock-changed")).toBe(
+      true,
+    );
   });
 
   it("package-lock-changed is triggered even when package.json is NOT in the diff", () => {
     const findings = applyRules([file("pnpm-lock.yaml")], DEFAULT_RULES);
-    const pkgLockFindings = findings.filter((f) => f.id === "package-lock-changed");
+    const pkgLockFindings = findings.filter(
+      (f) => f.id === "package-lock-changed",
+    );
     expect(pkgLockFindings).toHaveLength(1);
     expect(pkgLockFindings[0].file).toBe("pnpm-lock.yaml");
   });
@@ -53,15 +57,15 @@ describe("edge case 2: src/graphql/generated/types.ts triggers generated-file-ed
     expect(
       hasRule(
         [file("src/graphql/generated/types.ts")],
-        "generated-file-edited"
-      )
+        "generated-file-edited",
+      ),
     ).toBe(true);
   });
 
   it("severity is medium", () => {
     const findings = applyRules(
       [file("src/graphql/generated/types.ts")],
-      DEFAULT_RULES
+      DEFAULT_RULES,
     );
     const f = findings.find((x) => x.id === "generated-file-edited");
     expect(f?.severity).toBe("medium");
@@ -70,7 +74,7 @@ describe("edge case 2: src/graphql/generated/types.ts triggers generated-file-ed
   it("requiredReview is 'generated file'", () => {
     const findings = applyRules(
       [file("src/graphql/generated/types.ts")],
-      DEFAULT_RULES
+      DEFAULT_RULES,
     );
     const f = findings.find((x) => x.id === "generated-file-edited");
     expect(f?.requiredReview).toBe("generated file");
@@ -86,8 +90,8 @@ describe("edge case 3: not-generated path does not trigger generated rule", () =
     expect(
       hasRule(
         [file("src/graphql/not-generated/types.ts")],
-        "generated-file-edited"
-      )
+        "generated-file-edited",
+      ),
     ).toBe(false);
   });
 
@@ -95,8 +99,8 @@ describe("edge case 3: not-generated path does not trigger generated rule", () =
     expect(
       hasRule(
         [file("src/components/not-generated-component.tsx")],
-        "generated-file-edited"
-      )
+        "generated-file-edited",
+      ),
     ).toBe(false);
   });
 
@@ -104,22 +108,19 @@ describe("edge case 3: not-generated path does not trigger generated rule", () =
     // "auto-generated" has "-generated" — the hyphen is not a path separator,
     // so this correctly does NOT trigger with the precise pattern.
     expect(
-      hasRule(
-        [file("src/auto-generated/types.ts")],
-        "generated-file-edited"
-      )
+      hasRule([file("src/auto-generated/types.ts")], "generated-file-edited"),
     ).toBe(false);
   });
 
   it("but src/generated/types.ts (standalone segment) still triggers", () => {
     expect(
-      hasRule([file("src/generated/types.ts")], "generated-file-edited")
+      hasRule([file("src/generated/types.ts")], "generated-file-edited"),
     ).toBe(true);
   });
 
   it("and src/types/generated.ts (filename) still triggers", () => {
     expect(
-      hasRule([file("src/types/generated.ts")], "generated-file-edited")
+      hasRule([file("src/types/generated.ts")], "generated-file-edited"),
     ).toBe(true);
   });
 });
@@ -131,13 +132,13 @@ describe("edge case 3: not-generated path does not trigger generated rule", () =
 describe("edge case 4: src/app/pricing/page.tsx triggers two rules", () => {
   it("triggers public-route-changed", () => {
     expect(
-      hasRule([file("src/app/pricing/page.tsx")], "public-route-changed")
+      hasRule([file("src/app/pricing/page.tsx")], "public-route-changed"),
     ).toBe(true);
   });
 
   it("triggers pricing-copy-changed", () => {
     expect(
-      hasRule([file("src/app/pricing/page.tsx")], "pricing-copy-changed")
+      hasRule([file("src/app/pricing/page.tsx")], "pricing-copy-changed"),
     ).toBe(true);
   });
 
@@ -150,7 +151,7 @@ describe("edge case 4: src/app/pricing/page.tsx triggers two rules", () => {
   it("findings for both rules point to the same file", () => {
     const findings = applyRules(
       [file("src/app/pricing/page.tsx")],
-      DEFAULT_RULES
+      DEFAULT_RULES,
     );
     const publicRoute = findings.find((f) => f.id === "public-route-changed");
     const pricingCopy = findings.find((f) => f.id === "pricing-copy-changed");
@@ -168,15 +169,15 @@ describe("edge case 5: deleted test file triggers test-deleted", () => {
     expect(
       hasRule(
         [file("apps/web/components/Button.test.tsx", "deleted")],
-        "test-deleted"
-      )
+        "test-deleted",
+      ),
     ).toBe(true);
   });
 
   it("finding severity is high", () => {
     const findings = applyRules(
       [file("apps/web/components/Button.test.tsx", "deleted")],
-      DEFAULT_RULES
+      DEFAULT_RULES,
     );
     const f = findings.find((x) => x.id === "test-deleted");
     expect(f?.severity).toBe("high");
@@ -185,7 +186,7 @@ describe("edge case 5: deleted test file triggers test-deleted", () => {
   it("finding file matches the deleted path", () => {
     const findings = applyRules(
       [file("apps/web/components/Button.test.tsx", "deleted")],
-      DEFAULT_RULES
+      DEFAULT_RULES,
     );
     const f = findings.find((x) => x.id === "test-deleted");
     expect(f?.file).toBe("apps/web/components/Button.test.tsx");
@@ -201,8 +202,8 @@ describe("edge case 6: modified test file does not trigger test-deleted", () => 
     expect(
       hasRule(
         [file("apps/web/components/Button.test.tsx", "modified")],
-        "test-deleted"
-      )
+        "test-deleted",
+      ),
     ).toBe(false);
   });
 
@@ -210,8 +211,8 @@ describe("edge case 6: modified test file does not trigger test-deleted", () => 
     expect(
       hasRule(
         [file("apps/web/components/Button.test.tsx", "added")],
-        "test-deleted"
-      )
+        "test-deleted",
+      ),
     ).toBe(false);
   });
 
@@ -223,8 +224,8 @@ describe("edge case 6: modified test file does not trigger test-deleted", () => 
             previousPath: "apps/web/components/Button.test.tsx",
           }),
         ],
-        "test-deleted"
-      )
+        "test-deleted",
+      ),
     ).toBe(false);
   });
 });

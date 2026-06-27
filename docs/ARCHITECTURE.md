@@ -51,31 +51,40 @@ External boundary:
 ## Module responsibilities
 
 ### `src/cli.ts`
+
 Commander entry point. Parses `--base`, `--head`, `--format`, `--fail-on`, `--config`, `--github-comment`. Calls config loader, git layer, rule engine, and selected reporter. Handles exit codes 0/1/2.
 
 ### `src/rules.ts`
+
 Defines `Rule` interface, the 11 `DEFAULT_RULES`, path-pattern sets (regexes), `extractAddedDependencies` for `package.json` content inspection, `applyRules` engine, and `buildExtraRules` for config-driven custom rules.
 
 All rules are pure functions — they take a `ChangedFile` and return `RiskFinding[] | string | null`. No side effects.
 
 ### `src/risk.ts`
+
 `buildReport` combines changed files + rules into a `ReviewReport`.
 `shouldFail` compares overall risk against `--fail-on` threshold using `RISK_LEVEL_ORDER`.
 
 ### `src/git.ts`
+
 `getChangedFiles` shells out to `git diff --name-status`. Uses `execFileSync` with an argument array to prevent shell injection. Validates inputs for null bytes. For `package.json`, also fetches added lines for content inspection.
 
 ### `src/config.ts`
+
 Auto-discovers `agent-pr-reviewer-lite.config.json` by walking up from `cwd`. Parses and validates the JSON shape. Provides `globToRegex` to convert config glob patterns to RegExp objects.
 
 ### `src/github.ts`
+
 Posts or updates a PR comment using `fetch`. Reads `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, and `GITHUB_EVENT_PATH` from the environment. Silently skips when any are absent. No Octokit dependency.
 
 ### `src/types.ts`
+
 Single source of truth for all shared TypeScript types (`ChangedFile`, `RiskFinding`, `ReviewReport`, `Config`, `JsonReport`, etc.) and the `RISK_LEVEL_ORDER` severity map.
 
 ### `src/reporters/`
+
 Three reporter functions, each accepting `(report: ReviewReport, opts: RenderOptions) => string`:
+
 - `text.ts` — human-readable terminal output
 - `json.ts` — machine-readable JSON (stable schema, `JsonReport` type)
 - `markdown.ts` — GitHub Markdown table suitable for PR comments
@@ -110,11 +119,11 @@ shouldFail(overallRisk, failOn)
 
 ## Risk levels and rules
 
-| Level | Meaning |
-|-------|---------|
-| `high` | Auth, billing, security, migrations, deleted tests |
+| Level    | Meaning                                                                      |
+| -------- | ---------------------------------------------------------------------------- |
+| `high`   | Auth, billing, security, migrations, deleted tests                           |
 | `medium` | Env files, lockfiles, generated files, public routes, pricing copy, new deps |
-| `low` | (reserved for future rules) |
+| `low`    | (reserved for future rules)                                                  |
 
 Severity order: `low` (0) < `medium` (1) < `high` (2), stored in `RISK_LEVEL_ORDER`.
 
@@ -126,11 +135,11 @@ Overall risk = max severity across all findings.
 
 Zero-config by default. Optional `agent-pr-reviewer-lite.config.json` supports:
 
-| Field | Purpose |
-|-------|---------|
-| `base` | Default base ref |
-| `failOn` | Default fail threshold |
-| `ignore` | Glob patterns to skip |
+| Field            | Purpose                            |
+| ---------------- | ---------------------------------- |
+| `base`           | Default base ref                   |
+| `failOn`         | Default fail threshold             |
+| `ignore`         | Glob patterns to skip              |
 | `extraRiskPaths` | Custom rules appended to built-ins |
 
 CLI flags always override config file values.

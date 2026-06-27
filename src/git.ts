@@ -61,7 +61,7 @@ function getAddedLines(base: string, head: string, filePath: string): string[] {
     const output = execFileSync(
       "git",
       ["diff", `${base}...${head}`, "--", filePath],
-      { encoding: "utf8" }
+      { encoding: "utf8" },
     );
     const added: string[] = [];
     for (const line of output.split("\n")) {
@@ -91,7 +91,7 @@ export function getChangedFiles(base: string, head: string): ChangedFile[] {
     output = execFileSync(
       "git",
       ["diff", "--name-status", `${base}...${head}`],
-      { encoding: "utf8" }
+      { encoding: "utf8" },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

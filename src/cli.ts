@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
 import { loadConfig, isIgnored } from "./config.js";
 import { getChangedFiles } from "./git.js";
 import { tryPostGitHubComment } from "./github.js";
@@ -9,7 +10,12 @@ import { DEFAULT_RULES, buildExtraRules } from "./rules.js";
 import { renderText } from "./reporters/text.js";
 import { renderJson } from "./reporters/json.js";
 import { renderMarkdown } from "./reporters/markdown.js";
-import type { CliOptions, OutputFormat, RenderOptions, RiskLevel } from "./types.js";
+import type {
+  CliOptions,
+  OutputFormat,
+  RenderOptions,
+  RiskLevel,
+} from "./types.js";
 
 const VALID_FORMATS: OutputFormat[] = ["text", "json", "markdown"];
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
@@ -18,8 +24,8 @@ function assertOutputFormat(value: string): OutputFormat {
   if (!VALID_FORMATS.includes(value as OutputFormat)) {
     console.error(
       `Error: --format "${value}" is not valid.\n` +
-      `  Allowed values: ${VALID_FORMATS.join(", ")}\n` +
-      `  Example: --format markdown`
+        `  Allowed values: ${VALID_FORMATS.join(", ")}\n` +
+        `  Example: --format markdown`,
     );
     process.exit(1);
   }
@@ -30,8 +36,8 @@ function assertRiskLevel(value: string): RiskLevel {
   if (!VALID_RISK_LEVELS.includes(value as RiskLevel)) {
     console.error(
       `Error: --fail-on "${value}" is not valid.\n` +
-      `  Allowed values: ${VALID_RISK_LEVELS.join(", ")}\n` +
-      `  Example: --fail-on high`
+        `  Allowed values: ${VALID_RISK_LEVELS.join(", ")}\n` +
+        `  Example: --fail-on high`,
     );
     process.exit(1);
   }
@@ -45,44 +51,40 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     .name("agent-pr-reviewer-lite")
     .description(
       "Deterministic PR risk reviewer for agent-generated code changes.\n\n" +
-      "Scans the git diff between two refs and flags files in risk-sensitive areas\n" +
-      "(auth, billing, migrations, security, lockfiles, etc.) using built-in rules\n" +
-      "and optional config-file rules. No LLM. No external API. Works offline."
+        "Scans the git diff between two refs and flags files in risk-sensitive areas\n" +
+        "(auth, billing, migrations, security, lockfiles, etc.) using built-in rules\n" +
+        "and optional config-file rules. No LLM. No external API. Works offline.",
     )
     .version("0.1.0")
     .option(
       "--config <path>",
       "Path to config JSON file. When omitted, the tool looks for\n" +
-      "  agent-pr-reviewer-lite.config.json in the current directory."
+        "  agent-pr-reviewer-lite.config.json in the current directory.",
     )
     .option(
       "--base <ref>",
       "Base git ref (branch, tag, or commit SHA) to compare from.\n" +
-      "  Overrides the config file value. Default: main"
+        "  Overrides the config file value. Default: main",
     )
-    .option(
-      "--head <ref>",
-      "Head git ref to compare to.",
-      "HEAD"
-    )
+    .option("--head <ref>", "Head git ref to compare to.", "HEAD")
     .option(
       "--format <format>",
       "Output format: text (human-readable), json (machine-readable),\n" +
-      "  or markdown (GitHub PR comment).",
-      "text"
+        "  or markdown (GitHub PR comment).",
+      "text",
     )
     .option(
       "--fail-on <level>",
       "Exit with code 1 when the overall risk is at or above this level.\n" +
-      "  Allowed: low | medium | high. Overrides the config file value.\n" +
-      "  Default: high"
+        "  Allowed: low | medium | high. Overrides the config file value.\n" +
+        "  Default: high",
     )
     .option(
       "--github-comment",
       "Post (or update) a Markdown report as a GitHub PR comment.\n" +
-      "  Requires GITHUB_TOKEN, GITHUB_REPOSITORY, and GITHUB_EVENT_PATH\n" +
-      "  environment variables and a pull_request event payload.\n" +
-      "  Silently skipped when any prerequisite is missing (safe for local use)."
+        "  Requires GITHUB_TOKEN, GITHUB_REPOSITORY, and GITHUB_EVENT_PATH\n" +
+        "  environment variables and a pull_request event payload.\n" +
+        "  Silently skipped when any prerequisite is missing (safe for local use).",
     )
     .addHelpText(
       "after",
@@ -103,7 +105,7 @@ Examples:
   agent-pr-reviewer-lite --base origin/\$BASE_REF --format markdown --github-comment
 
   # Use a custom config file
-  agent-pr-reviewer-lite --config path/to/my.config.json --base main`
+  agent-pr-reviewer-lite --config path/to/my.config.json --base main`,
     )
     .action(async (opts) => {
       let config = null;
@@ -111,11 +113,13 @@ Examples:
         config = loadConfig(opts.config as string | undefined);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        const path = opts.config ? `"${opts.config as string}"` : "agent-pr-reviewer-lite.config.json";
+        const path = opts.config
+          ? `"${opts.config as string}"`
+          : "agent-pr-reviewer-lite.config.json";
         console.error(
           `Error: Failed to load config file ${path}.\n` +
-          `  ${msg}\n` +
-          `  Make sure the file contains valid JSON.`
+            `  ${msg}\n` +
+            `  Make sure the file contains valid JSON.`,
         );
         process.exit(2);
       }
@@ -125,7 +129,7 @@ Examples:
         head: opts.head as string,
         format: assertOutputFormat(opts.format as string),
         failOn: assertRiskLevel(
-          (opts.failOn as string | undefined) ?? config?.failOn ?? "high"
+          (opts.failOn as string | undefined) ?? config?.failOn ?? "high",
         ),
       };
 
@@ -142,16 +146,17 @@ Examples:
         const message = err instanceof Error ? err.message : String(err);
         console.error(
           `Error: git command failed.\n` +
-          `  ${message}\n` +
-          `  Make sure "${options.base}" and "${options.head}" are valid git refs,\n` +
-          `  and that you have fetched the base branch (git fetch origin ${options.base}).`
+            `  ${message}\n` +
+            `  Make sure "${options.base}" and "${options.head}" are valid git refs,\n` +
+            `  and that you have fetched the base branch (git fetch origin ${options.base}).`,
         );
         process.exit(2);
       }
 
-      const files = ignorePatterns.length > 0
-        ? allFiles.filter((f) => !isIgnored(f.path, ignorePatterns))
-        : allFiles;
+      const files =
+        ignorePatterns.length > 0
+          ? allFiles.filter((f) => !isIgnored(f.path, ignorePatterns))
+          : allFiles;
 
       const report = buildReport(options.base, options.head, files, rules);
       const failed = shouldFail(report.overallRisk, options.failOn);
@@ -189,11 +194,26 @@ Examples:
 
 /**
  * Auto-execute only when this file is invoked directly as the program
- * entrypoint (`node dist/cli.js` or `tsx src/cli.ts`). When imported as a
- * module (e.g. by tests) `run` is not called, so callers control argv.
+ * entrypoint (`node dist/cli.js`, `tsx src/cli.ts`, or the installed
+ * `agent-pr-reviewer-lite` bin). When imported as a module (e.g. by tests)
+ * `run` is not called, so callers control argv.
+ *
+ * `process.argv[1]` may be a symlink — npm/pnpm place the bin in
+ * `node_modules/.bin/` — so it is resolved with `realpathSync` before being
+ * compared to this module's real URL. Without this, the symlinked bin's path
+ * never equals `import.meta.url` and the CLI silently does nothing.
  */
-const invokedDirectly =
-  !!process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+function isInvokedDirectly(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(realpathSync(entry)).href;
+  } catch {
+    return false;
+  }
+}
+
+const invokedDirectly = isInvokedDirectly();
 
 if (invokedDirectly) {
   run().catch((err) => {

@@ -62,7 +62,7 @@ function makeRepo(): string {
 function writeAndCommit(
   dir: string,
   files: Record<string, string>,
-  message: string
+  message: string,
 ): void {
   for (const [rel, content] of Object.entries(files)) {
     const full = join(dir, rel);
@@ -118,9 +118,16 @@ describe.skipIf(!distExists)("Dist smoke — node dist/cli.js", () => {
   // ── 3. no risky changes → low risk → exit 0 ───────────────────────────────
   it("no risky changes → low risk → exit 0", () => {
     const repo = setup();
-    writeAndCommit(repo, { "utils/helpers.ts": "export const noop = () => {};\n" }, "add helper");
+    writeAndCommit(
+      repo,
+      { "utils/helpers.ts": "export const noop = () => {};\n" },
+      "add helper",
+    );
 
-    const { exitCode, stdout } = runDist(["--base", "HEAD~1", "--head", "HEAD"], repo);
+    const { exitCode, stdout } = runDist(
+      ["--base", "HEAD~1", "--head", "HEAD"],
+      repo,
+    );
 
     expect(exitCode).toBe(0);
     expect(stdout).toMatch(/low/i);
@@ -132,12 +139,12 @@ describe.skipIf(!distExists)("Dist smoke — node dist/cli.js", () => {
     writeAndCommit(
       repo,
       { "src/auth/session.ts": "export const getSession = () => null;\n" },
-      "add auth session"
+      "add auth session",
     );
 
     const { exitCode, stdout } = runDist(
       ["--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(1);
@@ -148,11 +155,15 @@ describe.skipIf(!distExists)("Dist smoke — node dist/cli.js", () => {
   // ── 5. --format json produces valid JSON with the correct schema ───────────
   it("--format json produces valid JSON with the expected schema", () => {
     const repo = setup();
-    writeAndCommit(repo, { "utils/helpers.ts": "export const noop = () => {};\n" }, "add helper");
+    writeAndCommit(
+      repo,
+      { "utils/helpers.ts": "export const noop = () => {};\n" },
+      "add helper",
+    );
 
     const { exitCode, stdout } = runDist(
       ["--base", "HEAD~1", "--head", "HEAD", "--format", "json"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(0);
@@ -163,8 +174,8 @@ describe.skipIf(!distExists)("Dist smoke — node dist/cli.js", () => {
     expect(parsed).toHaveProperty("findings");
     expect(parsed).toHaveProperty("requiredHumanReview");
     expect(parsed).toHaveProperty("ci");
-    expect((parsed.ci as Record<string, unknown>)).toHaveProperty("failOn");
-    expect((parsed.ci as Record<string, unknown>)).toHaveProperty("result");
+    expect(parsed.ci as Record<string, unknown>).toHaveProperty("failOn");
+    expect(parsed.ci as Record<string, unknown>).toHaveProperty("result");
   });
 
   // ── 6. invalid base ref → exit 2 ──────────────────────────────────────────
@@ -173,7 +184,7 @@ describe.skipIf(!distExists)("Dist smoke — node dist/cli.js", () => {
 
     const { exitCode, stderr } = runDist(
       ["--base", "nonexistent-branch-xyz-abc", "--head", "HEAD"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(2);
@@ -190,12 +201,12 @@ describe.skipIf(!distExists)("Dist smoke — node dist/cli.js", () => {
         "migrations/0012_add_tenant_rls.sql": "CREATE TABLE t;\n",
         "pnpm-lock.yaml": "lockfileVersion: '6.0'\n",
       },
-      "risky PR"
+      "risky PR",
     );
 
     const { exitCode, stdout } = runDist(
       ["--base", "HEAD~1", "--head", "HEAD", "--fail-on", "high"],
-      repo
+      repo,
     );
 
     expect(exitCode).toBe(1);

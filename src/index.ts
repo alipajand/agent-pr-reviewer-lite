@@ -8,7 +8,12 @@ export {
   postOrUpdateComment,
   tryPostGitHubComment,
 } from "./github.js";
-export { loadConfig, isIgnored, globToRegex, CONFIG_FILE_NAME } from "./config.js";
+export {
+  loadConfig,
+  isIgnored,
+  globToRegex,
+  CONFIG_FILE_NAME,
+} from "./config.js";
 export { applyRules, DEFAULT_RULES, buildExtraRules } from "./rules.js";
 export type { Rule } from "./rules.js";
 export { buildReport, shouldFail } from "./risk.js";

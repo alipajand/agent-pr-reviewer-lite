@@ -60,7 +60,7 @@ Pass `--github-comment` to automatically post (or update) a Markdown report as a
 ```yaml
 permissions:
   contents: read
-  pull-requests: write   # required to post/update comments
+  pull-requests: write # required to post/update comments
 
 jobs:
   risk-check:
@@ -82,11 +82,11 @@ jobs:
 
 The comment is only posted when **all** of the following are present at runtime — missing any one silently skips the comment without affecting the exit code:
 
-| Variable | Source | Purpose |
-|----------|--------|---------|
-| `GITHUB_TOKEN` | `secrets.GITHUB_TOKEN` (auto-injected) | Authenticates GitHub API calls |
-| `GITHUB_REPOSITORY` | Auto-injected by Actions | `owner/repo` to target |
-| `GITHUB_EVENT_PATH` | Auto-injected by Actions | Path to the event JSON (supplies the PR number) |
+| Variable            | Source                                 | Purpose                                         |
+| ------------------- | -------------------------------------- | ----------------------------------------------- |
+| `GITHUB_TOKEN`      | `secrets.GITHUB_TOKEN` (auto-injected) | Authenticates GitHub API calls                  |
+| `GITHUB_REPOSITORY` | Auto-injected by Actions               | `owner/repo` to target                          |
+| `GITHUB_EVENT_PATH` | Auto-injected by Actions               | Path to the event JSON (supplies the PR number) |
 
 The event payload must contain a `pull_request.number` field (i.e. the workflow runs on a `pull_request` trigger).
 
@@ -137,11 +137,11 @@ Recommended for security-sensitive projects. Blocks merges when any **medium** o
 If `agent-pr-reviewer-lite.config.json` is present at the repo root, the workflow picks it up automatically — no extra flags needed:
 
 ```yaml
-      - name: Run agent-pr-reviewer-lite
-        run: |
-          pnpm agent-pr-reviewer-lite \
-            --base origin/${{ github.base_ref }} \
-            --head HEAD
+- name: Run agent-pr-reviewer-lite
+  run: |
+    pnpm agent-pr-reviewer-lite \
+      --base origin/${{ github.base_ref }} \
+      --head HEAD
 ```
 
 See [Configuration](../README.md#configuration) for the full config schema.
@@ -151,28 +151,28 @@ See [Configuration](../README.md#configuration) for the full config schema.
 Pass `--format json` to emit machine-readable output that a subsequent step can parse:
 
 ```yaml
-      - name: Run agent-pr-reviewer-lite (JSON)
-        id: risk
-        run: |
-          pnpm agent-pr-reviewer-lite \
-            --base origin/${{ github.base_ref }} \
-            --head HEAD \
-            --format json \
-            --fail-on high \
-            | tee risk-report.json
-        continue-on-error: true
+- name: Run agent-pr-reviewer-lite (JSON)
+  id: risk
+  run: |
+    pnpm agent-pr-reviewer-lite \
+      --base origin/${{ github.base_ref }} \
+      --head HEAD \
+      --format json \
+      --fail-on high \
+      | tee risk-report.json
+  continue-on-error: true
 
-      - name: Upload risk report
-        uses: actions/upload-artifact@v4
-        with:
-          name: risk-report
-          path: risk-report.json
+- name: Upload risk report
+  uses: actions/upload-artifact@v4
+  with:
+    name: risk-report
+    path: risk-report.json
 ```
 
 ## Exit codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Risk is below the `--fail-on` threshold — check passes |
-| `1` | Risk meets or exceeds the `--fail-on` threshold — check fails |
-| `2` | Unexpected error (e.g. git command failed, bad config) |
+| Code | Meaning                                                       |
+| ---- | ------------------------------------------------------------- |
+| `0`  | Risk is below the `--fail-on` threshold — check passes        |
+| `1`  | Risk meets or exceeds the `--fail-on` threshold — check fails |
+| `2`  | Unexpected error (e.g. git command failed, bad config)        |

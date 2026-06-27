@@ -54,7 +54,7 @@ function commit(dir: string, message: string): void {
 function writeAndCommit(
   dir: string,
   files: Record<string, string>,
-  message: string
+  message: string,
 ): void {
   writeFiles(dir, files);
   commit(dir, message);
@@ -108,8 +108,16 @@ describe("getChangedFiles — status mapping", () => {
 
   it("detects a modified file", () => {
     const repo = setup();
-    writeAndCommit(repo, { "src/file.ts": "export const a = 1;\n" }, "add file");
-    writeAndCommit(repo, { "src/file.ts": "export const a = 2;\n" }, "modify file");
+    writeAndCommit(
+      repo,
+      { "src/file.ts": "export const a = 1;\n" },
+      "add file",
+    );
+    writeAndCommit(
+      repo,
+      { "src/file.ts": "export const a = 2;\n" },
+      "modify file",
+    );
 
     const files = getChangedFiles("HEAD~1", "HEAD");
     const modified = files.find((f) => f.path === "src/file.ts");
@@ -118,7 +126,11 @@ describe("getChangedFiles — status mapping", () => {
 
   it("detects a deleted file", () => {
     const repo = setup();
-    writeAndCommit(repo, { "src/gone.ts": "export const a = 1;\n" }, "add file");
+    writeAndCommit(
+      repo,
+      { "src/gone.ts": "export const a = 1;\n" },
+      "add file",
+    );
     rmSync(join(repo, "src/gone.ts"));
     commit(repo, "delete file");
 
@@ -130,7 +142,10 @@ describe("getChangedFiles — status mapping", () => {
   it("detects a renamed file and reports the new path", () => {
     const repo = setup();
     // A reasonably large file so git records a pure rename (R100).
-    const body = Array.from({ length: 20 }, (_, i) => `export const v${i} = ${i};`).join("\n") + "\n";
+    const body =
+      Array.from({ length: 20 }, (_, i) => `export const v${i} = ${i};`).join(
+        "\n",
+      ) + "\n";
     writeAndCommit(repo, { "src/old-name.ts": body }, "add file");
     git(["mv", "src/old-name.ts", "src/new-name.ts"], repo);
     commit(repo, "rename file");
@@ -151,13 +166,13 @@ describe("getChangedFiles — status mapping", () => {
         "migrations/001.sql": "CREATE TABLE t;\n",
         "pnpm-lock.yaml": "lockfileVersion: '6.0'\n",
       },
-      "multi-file change"
+      "multi-file change",
     );
 
     const files = getChangedFiles("HEAD~1", "HEAD");
     const paths = files.map((f) => f.path).sort();
     expect(paths).toEqual(
-      ["migrations/001.sql", "pnpm-lock.yaml", "src/auth/session.ts"].sort()
+      ["migrations/001.sql", "pnpm-lock.yaml", "src/auth/session.ts"].sort(),
     );
   });
 });
@@ -171,21 +186,29 @@ describe("getChangedFiles — package.json content inspection", () => {
       repo,
       {
         "package.json":
-          JSON.stringify({ name: "x", version: "1.0.0", dependencies: {} }, null, 2) + "\n",
+          JSON.stringify(
+            { name: "x", version: "1.0.0", dependencies: {} },
+            null,
+            2,
+          ) + "\n",
       },
-      "add package.json"
+      "add package.json",
     );
     writeAndCommit(
       repo,
       {
         "package.json":
           JSON.stringify(
-            { name: "x", version: "1.0.0", dependencies: { lodash: "^4.17.21" } },
+            {
+              name: "x",
+              version: "1.0.0",
+              dependencies: { lodash: "^4.17.21" },
+            },
             null,
-            2
+            2,
           ) + "\n",
       },
-      "add lodash"
+      "add lodash",
     );
 
     const files = getChangedFiles("HEAD~1", "HEAD");
@@ -198,7 +221,11 @@ describe("getChangedFiles — package.json content inspection", () => {
 
   it("does NOT populate addedLines for a deleted package.json", () => {
     const repo = setup();
-    writeAndCommit(repo, { "package.json": '{"name":"x"}\n' }, "add package.json");
+    writeAndCommit(
+      repo,
+      { "package.json": '{"name":"x"}\n' },
+      "add package.json",
+    );
     rmSync(join(repo, "package.json"));
     commit(repo, "delete package.json");
 
@@ -210,7 +237,11 @@ describe("getChangedFiles — package.json content inspection", () => {
 
   it("does NOT populate addedLines for non-package.json files", () => {
     const repo = setup();
-    writeAndCommit(repo, { "src/config.ts": "export const a = 1;\n" }, "add config");
+    writeAndCommit(
+      repo,
+      { "src/config.ts": "export const a = 1;\n" },
+      "add config",
+    );
 
     const files = getChangedFiles("HEAD~1", "HEAD");
     const cfg = files.find((f) => f.path === "src/config.ts");
@@ -224,21 +255,21 @@ describe("getChangedFiles — error handling", () => {
   it("throws a wrapped error for an invalid base ref", () => {
     setup();
     expect(() => getChangedFiles("nonexistent-ref-xyz", "HEAD")).toThrow(
-      /Failed to run git diff/
+      /Failed to run git diff/,
     );
   });
 
   it("rejects a base ref containing a null byte before invoking git", () => {
     setup();
     expect(() => getChangedFiles("main\x00", "HEAD")).toThrow(
-      /--base contains a null byte/
+      /--base contains a null byte/,
     );
   });
 
   it("rejects a head ref containing a null byte before invoking git", () => {
     setup();
     expect(() => getChangedFiles("main", "HEAD\x00")).toThrow(
-      /--head contains a null byte/
+      /--head contains a null byte/,
     );
   });
 });

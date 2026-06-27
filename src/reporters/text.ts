@@ -1,4 +1,9 @@
-import type { RenderOptions, ReviewReport, RiskFinding, RiskLevel } from "../types.js";
+import type {
+  RenderOptions,
+  ReviewReport,
+  RiskFinding,
+  RiskLevel,
+} from "../types.js";
 
 function capitalize(level: RiskLevel): string {
   return level.charAt(0).toUpperCase() + level.slice(1);

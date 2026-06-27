@@ -43,6 +43,7 @@ pnpm build
 See `docs/prompts/ADD_RULE_PROMPT.md` for the full checklist.
 
 Summary:
+
 1. Add regex patterns and a rule entry in `src/rules.ts`
 2. Add tests in `tests/rules.test.ts` (positive, negative, edge cases)
 3. Update the rule table in `README.md`
@@ -59,7 +60,7 @@ docs: update github-actions integration guide
 test: add edge case for null-byte rejection
 ```
 
-No emoji. Summary ≤ 72 characters. Body explains *why*, not *what*.
+No emoji. Summary ≤ 72 characters. Body explains _why_, not _what_.
 
 ## What requires human review
 

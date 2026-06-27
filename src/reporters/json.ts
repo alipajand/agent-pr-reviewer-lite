@@ -1,4 +1,9 @@
-import type { JsonReport, RenderOptions, ReviewReport, RiskFinding } from "../types.js";
+import type {
+  JsonReport,
+  RenderOptions,
+  ReviewReport,
+  RiskFinding,
+} from "../types.js";
 
 function deduplicate(findings: RiskFinding[]): RiskFinding[] {
   const seen = new Set<string>();
@@ -30,7 +35,9 @@ export function renderJson(report: ReviewReport, opts: RenderOptions): string {
       severity: f.severity,
       file: f.file,
       reason: f.reason,
-      ...(f.requiredReview !== undefined && { requiredReview: f.requiredReview }),
+      ...(f.requiredReview !== undefined && {
+        requiredReview: f.requiredReview,
+      }),
     })),
     requiredHumanReview: requiredReviewLabels(unique),
     ci: {

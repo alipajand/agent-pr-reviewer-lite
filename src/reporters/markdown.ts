@@ -1,4 +1,9 @@
-import type { RenderOptions, ReviewReport, RiskFinding, RiskLevel } from "../types.js";
+import type {
+  RenderOptions,
+  ReviewReport,
+  RiskFinding,
+  RiskLevel,
+} from "../types.js";
 
 function capitalize(level: RiskLevel): string {
   return level.charAt(0).toUpperCase() + level.slice(1);
@@ -26,7 +31,10 @@ function requiredReviewLabels(findings: RiskFinding[]): string[] {
   return [...labels].sort();
 }
 
-export function renderMarkdown(report: ReviewReport, opts: RenderOptions): string {
+export function renderMarkdown(
+  report: ReviewReport,
+  opts: RenderOptions,
+): string {
   const unique = deduplicate(report.findings);
   const lines: string[] = [];
 

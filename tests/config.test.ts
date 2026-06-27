@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { globToRegex, isIgnored, loadConfig, CONFIG_FILE_NAME } from "../src/config.js";
+import {
+  globToRegex,
+  isIgnored,
+  loadConfig,
+  CONFIG_FILE_NAME,
+} from "../src/config.js";
 import { buildExtraRules } from "../src/rules.js";
 import { applyRules, DEFAULT_RULES } from "../src/rules.js";
 import { buildReport } from "../src/risk.js";
@@ -49,7 +54,9 @@ describe("globToRegex", () => {
     });
 
     it("docs/** matches deeply nested files", () => {
-      expect(globToRegex("docs/**").test("docs/api/reference/index.md")).toBe(true);
+      expect(globToRegex("docs/**").test("docs/api/reference/index.md")).toBe(
+        true,
+      );
     });
 
     it("docs/** also matches the bare directory itself", () => {
@@ -78,11 +85,15 @@ describe("globToRegex", () => {
 
   describe("suffix patterns", () => {
     it("matches .generated.ts extension", () => {
-      expect(globToRegex("*.generated.ts").test("schema.generated.ts")).toBe(true);
+      expect(globToRegex("*.generated.ts").test("schema.generated.ts")).toBe(
+        true,
+      );
     });
 
     it("does not match in a subdirectory", () => {
-      expect(globToRegex("*.generated.ts").test("src/schema.generated.ts")).toBe(false);
+      expect(
+        globToRegex("*.generated.ts").test("src/schema.generated.ts"),
+      ).toBe(false);
     });
   });
 });
@@ -128,7 +139,10 @@ describe("isIgnored", () => {
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = join(tmpdir(), `apr-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  tmpDir = join(
+    tmpdir(),
+    `apr-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  );
   mkdirSync(tmpDir, { recursive: true });
 });
 
@@ -148,9 +162,9 @@ describe("loadConfig", () => {
   });
 
   it("throws when an explicit path does not exist", () => {
-    expect(() =>
-      loadConfig(join(tmpDir, "nonexistent.json"))
-    ).toThrow("not found");
+    expect(() => loadConfig(join(tmpDir, "nonexistent.json"))).toThrow(
+      "not found",
+    );
   });
 
   it("loads a valid minimal config", () => {
@@ -240,7 +254,9 @@ describe("loadConfig", () => {
 
   it("throws when extraRiskPaths is not an array", () => {
     const filePath = writeConfig({ extraRiskPaths: { id: "x" } });
-    expect(() => loadConfig(filePath)).toThrow(/config.extraRiskPaths must be an array/);
+    expect(() => loadConfig(filePath)).toThrow(
+      /config.extraRiskPaths must be an array/,
+    );
   });
 
   it("throws when an extraRiskPaths entry is not an object", () => {
@@ -250,36 +266,54 @@ describe("loadConfig", () => {
 
   it("throws when an extraRiskPaths entry has an empty id", () => {
     const filePath = writeConfig({
-      extraRiskPaths: [{ id: "  ", label: "X", severity: "low", patterns: ["a"] }],
+      extraRiskPaths: [
+        { id: "  ", label: "X", severity: "low", patterns: ["a"] },
+      ],
     });
     expect(() => loadConfig(filePath)).toThrow(/id must be a non-empty string/);
   });
 
   it("throws when an extraRiskPaths entry has an empty label", () => {
     const filePath = writeConfig({
-      extraRiskPaths: [{ id: "x", label: "", severity: "low", patterns: ["a"] }],
+      extraRiskPaths: [
+        { id: "x", label: "", severity: "low", patterns: ["a"] },
+      ],
     });
-    expect(() => loadConfig(filePath)).toThrow(/label must be a non-empty string/);
+    expect(() => loadConfig(filePath)).toThrow(
+      /label must be a non-empty string/,
+    );
   });
 
   it("throws when an extraRiskPaths entry has empty patterns", () => {
     const filePath = writeConfig({
       extraRiskPaths: [{ id: "x", label: "X", severity: "low", patterns: [] }],
     });
-    expect(() => loadConfig(filePath)).toThrow(/patterns must be a non-empty array of strings/);
+    expect(() => loadConfig(filePath)).toThrow(
+      /patterns must be a non-empty array of strings/,
+    );
   });
 
   it("throws when an extraRiskPaths entry has a non-string pattern", () => {
     const filePath = writeConfig({
-      extraRiskPaths: [{ id: "x", label: "X", severity: "low", patterns: [42] }],
+      extraRiskPaths: [
+        { id: "x", label: "X", severity: "low", patterns: [42] },
+      ],
     });
-    expect(() => loadConfig(filePath)).toThrow(/patterns must be a non-empty array of strings/);
+    expect(() => loadConfig(filePath)).toThrow(
+      /patterns must be a non-empty array of strings/,
+    );
   });
 
   it("parses an extraRiskPaths entry that includes requiredReview", () => {
     const filePath = writeConfig({
       extraRiskPaths: [
-        { id: "x", label: "X", severity: "high", patterns: ["a/**"], requiredReview: "team-x" },
+        {
+          id: "x",
+          label: "X",
+          severity: "high",
+          patterns: ["a/**"],
+          requiredReview: "team-x",
+        },
       ],
     });
     const config = loadConfig(filePath);
@@ -303,10 +337,7 @@ describe("buildExtraRules", () => {
       id: "ledgerguard-renewals",
       label: "Renewals workflow changed",
       severity: "high",
-      patterns: [
-        "apps/web/app/**/renewals/**",
-        "apps/api/**/renewals/**",
-      ],
+      patterns: ["apps/web/app/**/renewals/**", "apps/api/**/renewals/**"],
       requiredReview: "renewals workflow",
     },
   ];
@@ -357,10 +388,7 @@ describe("buildExtraRules", () => {
 // ---------------------------------------------------------------------------
 
 describe("ignore integration", () => {
-  function reviewWithIgnore(
-    files: ChangedFile[],
-    ignorePatterns: string[]
-  ) {
+  function reviewWithIgnore(files: ChangedFile[], ignorePatterns: string[]) {
     const filtered = files.filter((f) => !isIgnored(f.path, ignorePatterns));
     return buildReport("main", "HEAD", filtered);
   }
@@ -385,7 +413,9 @@ describe("ignore integration", () => {
       { path: "docs/guide.md", status: "modified" },
     ];
     const result = reviewWithIgnore(files, ["docs/**"]);
-    expect(result.findings.some((f) => f.file === "src/auth/session.ts")).toBe(true);
+    expect(result.findings.some((f) => f.file === "src/auth/session.ts")).toBe(
+      true,
+    );
     expect(result.findings.every((f) => f.file !== "docs/guide.md")).toBe(true);
   });
 
@@ -411,7 +441,9 @@ describe("ignore integration", () => {
     const files: ChangedFile[] = [
       { path: "apps/web/renewals/index.ts", status: "modified" },
     ];
-    const filtered = files.filter((f) => !isIgnored(f.path, ["apps/web/renewals/**"]));
+    const filtered = files.filter(
+      (f) => !isIgnored(f.path, ["apps/web/renewals/**"]),
+    );
     const report = buildReport("main", "HEAD", filtered, allRules);
     expect(report.overallRisk).toBe("low");
   });
@@ -457,6 +489,8 @@ describe("extraRiskPaths integration", () => {
       { path: "src/utils/math.ts", status: "modified" },
     ];
     const report = buildReport("main", "HEAD", files, allRules);
-    expect(report.findings.find((x) => x.id === "renewals-rule")).toBeUndefined();
+    expect(
+      report.findings.find((x) => x.id === "renewals-rule"),
+    ).toBeUndefined();
   });
 });
