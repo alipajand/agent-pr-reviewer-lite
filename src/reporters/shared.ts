@@ -43,6 +43,19 @@ export function shouldExplain(opts: RenderOptions): boolean {
   return opts.explain === true;
 }
 
+/**
+ * Escape a value for safe inclusion in a single Markdown table cell.
+ * Pipes would otherwise be parsed as column separators, and newlines would
+ * break the row. Built-in `--explain` text embeds `RegExp.toString()`, which
+ * routinely contains `|` (alternation), so this is required for correct tables.
+ */
+export function escapeMarkdownCell(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\|/g, "\\|")
+    .replace(/\r?\n/g, " ");
+}
+
 export function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

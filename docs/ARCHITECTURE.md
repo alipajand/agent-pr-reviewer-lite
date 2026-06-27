@@ -154,7 +154,10 @@ Zero-config by default. Optional `agent-pr-reviewer-lite.config.json` supports:
 | `ignore`         | Glob patterns to skip              |
 | `extraRiskPaths` | Custom rules appended to built-ins |
 
-CLI flags always override config file values.
+Scalar CLI flags (`--base`, `--fail-on`) override their config-file counterparts.
+`--preset` is additive instead: CLI presets are **unioned** with `presets` from
+the config (deduplicated), so rule packs layer rather than replace. `--changed-files`
+and `--explain` have no config equivalent.
 
 ---
 

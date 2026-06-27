@@ -2,6 +2,7 @@ import type { RenderOptions, ReviewReport } from "../types.js";
 import {
   capitalize,
   displayText,
+  escapeMarkdownCell,
   explainText,
   requiredReviewLabels,
   shouldExplain,
@@ -31,11 +32,11 @@ export function renderMarkdown(
 
     for (const f of unique) {
       const severity = capitalize(f.severity);
-      const filePath = `\`${f.file}\``;
-      const finding = displayText(f);
-      const review = f.requiredReview ?? "";
+      const filePath = `\`${escapeMarkdownCell(f.file)}\``;
+      const finding = escapeMarkdownCell(displayText(f));
+      const review = escapeMarkdownCell(f.requiredReview ?? "");
       if (shouldExplain(opts)) {
-        const explain = explainText(f) ?? "";
+        const explain = escapeMarkdownCell(explainText(f) ?? "");
         lines.push(
           `| ${severity} | ${filePath} | ${finding} | ${review} | ${explain} |`,
         );

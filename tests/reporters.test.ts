@@ -142,6 +142,16 @@ describe("renderText", () => {
     expect(count).toBe(1);
   });
 
+  it("keeps distinct findings that share id+file but differ in reason", () => {
+    // Multiple added dependencies share id `dependency-added` and file
+    // `package.json` but carry distinct reasons — all must survive dedup.
+    const axios = { ...depFinding, reason: "Added dependency: axios" };
+    const zod = { ...depFinding, reason: "Added dependency: zod" };
+    const out = renderText(makeReport([axios, zod], "medium"), mediumOpts);
+    expect(out).toContain("Added dependency: axios");
+    expect(out).toContain("Added dependency: zod");
+  });
+
   it("does not show 'Required human review:' when no findings", () => {
     const out = renderText(makeReport([], "low"), passedOpts);
     expect(out).not.toContain("Required human review:");
@@ -307,6 +317,19 @@ describe("renderJson", () => {
     expect(Object.keys(parsed.ci)).toEqual(
       expect.arrayContaining(["failOn", "result"]),
     );
+  });
+
+  it("lists each added dependency separately (same id+file, distinct reason)", () => {
+    const axios = { ...depFinding, reason: "Added dependency: axios" };
+    const zod = { ...depFinding, reason: "Added dependency: zod" };
+    const parsed = JSON.parse(
+      renderJson(makeReport([axios, zod], "medium"), mediumOpts),
+    );
+    expect(parsed.findingCount).toBe(2);
+    expect(parsed.findings.map((f: RiskFinding) => f.reason)).toEqual([
+      "Added dependency: axios",
+      "Added dependency: zod",
+    ]);
   });
 
   it("preserves original file order in findings array", () => {

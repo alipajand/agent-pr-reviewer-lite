@@ -207,6 +207,28 @@ describe("renderMarkdown — findings table", () => {
     );
     expect(out).toContain("Matched built-in path pattern /auth/");
   });
+
+  it("escapes pipe characters in the explain cell so the table stays valid", () => {
+    // Real built-in explain text embeds RegExp.toString(), e.g. /(?:^|\/)auth/,
+    // whose `|` would otherwise be parsed as an extra table column.
+    const out = renderMarkdown(
+      makeReport([
+        {
+          ...authFinding,
+          explain: "Matched built-in path pattern /(?:^|\\/)auth\\.tsx?$/i",
+        },
+      ]),
+      { ...failedOpts, explain: true },
+    );
+    const row = out
+      .split("\n")
+      .find((l) => l.includes("src/auth/session.ts") && l.startsWith("|"));
+    expect(row).toBeDefined();
+    // 5 columns → exactly 6 unescaped pipe delimiters; literal pipes are escaped.
+    const delimiters = (row ?? "").match(/(?<!\\)\|/g) ?? [];
+    expect(delimiters.length).toBe(6);
+    expect(row).toContain("\\|");
+  });
 });
 
 // ---------------------------------------------------------------------------
