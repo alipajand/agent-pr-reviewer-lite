@@ -57,6 +57,7 @@
   "devDependencies": {
     "@types/node": "^25.9.1",
     "@vitest/coverage-v8": "^4.1.8",
+    "esbuild": "0.28.1",
     "prettier": "^3.8.5",
     "tsx": "^4.15.7",
     "typescript": "^6.0.3",
