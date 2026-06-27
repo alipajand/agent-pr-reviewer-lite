@@ -194,6 +194,19 @@ describe("renderMarkdown — findings table", () => {
     const count = (out.match(/src\/auth\/session\.ts/g) ?? []).length;
     expect(count).toBe(1);
   });
+
+  it("adds an Explain column when explain mode is enabled", () => {
+    const out = renderMarkdown(
+      makeReport([
+        { ...authFinding, explain: "Matched built-in path pattern /auth/" },
+      ]),
+      { ...failedOpts, explain: true },
+    );
+    expect(out).toContain(
+      "| Severity | File | Finding | Required review | Explain |",
+    );
+    expect(out).toContain("Matched built-in path pattern /auth/");
+  });
 });
 
 // ---------------------------------------------------------------------------

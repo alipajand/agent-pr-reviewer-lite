@@ -11,8 +11,10 @@ import { describe, it, expect } from "vitest";
 import * as api from "../src/index.js";
 
 describe("public API — git helpers", () => {
-  it("exports getChangedFiles and parseNameStatus as functions", () => {
+  it("exports git helper functions", () => {
     expect(typeof api.getChangedFiles).toBe("function");
+    expect(typeof api.getChangedFilesFromInput).toBe("function");
+    expect(typeof api.parseChangedFilesInput).toBe("function");
     expect(typeof api.parseNameStatus).toBe("function");
   });
 
@@ -51,6 +53,7 @@ describe("public API — rules", () => {
   it("exports applyRules, buildExtraRules, and a non-empty DEFAULT_RULES", () => {
     expect(typeof api.applyRules).toBe("function");
     expect(typeof api.buildExtraRules).toBe("function");
+    expect(typeof api.buildPresetRules).toBe("function");
     expect(Array.isArray(api.DEFAULT_RULES)).toBe(true);
     expect(api.DEFAULT_RULES.length).toBeGreaterThan(0);
   });
@@ -82,10 +85,12 @@ describe("public API — risk engine", () => {
 });
 
 describe("public API — reporters", () => {
-  it("exports the three render functions", () => {
+  it("exports the reporter render functions", () => {
     expect(typeof api.renderText).toBe("function");
     expect(typeof api.renderJson).toBe("function");
     expect(typeof api.renderMarkdown).toBe("function");
+    expect(typeof api.renderSarif).toBe("function");
+    expect(typeof api.renderJunit).toBe("function");
   });
 });
 

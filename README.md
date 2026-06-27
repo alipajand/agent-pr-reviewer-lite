@@ -12,7 +12,7 @@ It answers one question:
 
 > **Did this PR touch areas that deserve human review before merge?**
 
-It outputs a human-readable **text** report, a machine-readable **JSON** report, or a **Markdown** table suitable for GitHub PR comments. It exits non-zero when the risk level meets or exceeds a configurable threshold, making it suitable as a CI gate.
+It outputs human-readable **text** and **Markdown** reports plus machine-readable **JSON**, **SARIF**, and **JUnit XML**. It exits non-zero when the risk level meets or exceeds a configurable threshold, making it suitable as a CI gate.
 
 What it is **not**:
 
@@ -62,8 +62,12 @@ Options:
   --config <path>      Path to config JSON file (default: auto-discover)
   --base <ref>         Base git ref to compare from (default: main)
   --head <ref>         Head git ref to compare to (default: HEAD)
-  --format <format>    Output format: text | json | markdown (default: text)
+  --format <format>    Output format: text | json | markdown | sarif | junit (default: text)
   --fail-on <level>    Exit 1 when risk >= level: low | medium | high (default: high)
+  --preset <name>      Built-in preset: nextjs-saas | supabase | stripe (repeatable)
+  --changed-files <path>
+                       Read newline-delimited changed files from a file or stdin (-)
+  --explain            Include deterministic rule-trigger details in human-readable output
   --github-comment     Post/update a PR comment with the markdown report
   -V, --version        Print version
   -h, --help           Show help
@@ -159,6 +163,14 @@ CI result:
 - result: failed
 ```
 
+### SARIF
+
+Use `--format sarif` to emit SARIF 2.1.0 for code-scanning style consumers such as GitHub Advanced Security uploads or other SARIF-aware tooling.
+
+### JUnit
+
+Use `--format junit` to emit one test case per finding. Findings at or above `--fail-on` are serialized as failing test cases so CI dashboards can render them like tests.
+
 ## Configuration
 
 `agent-pr-reviewer-lite` is zero-config by default. Create `agent-pr-reviewer-lite.config.json` in your project root to customize behaviour (or pass `--config <path>`).
@@ -167,6 +179,7 @@ CI result:
 {
   "base": "main",
   "failOn": "high",
+  "presets": ["supabase", "stripe"],
   "ignore": ["docs/**", "*.md", "**/*.test.ts"],
   "extraRiskPaths": [
     {
@@ -186,8 +199,21 @@ CI result:
 | ---------------- | ----------------------------- | ------------------------------------------------------ |
 | `base`           | `string`                      | Default base ref (overridden by `--base`)              |
 | `failOn`         | `"low" \| "medium" \| "high"` | Default fail threshold (overridden by `--fail-on`)     |
+| `presets`        | `PresetName[]`                | Built-in rule packs layered on top of the defaults     |
 | `ignore`         | `string[]`                    | Glob patterns — matched files are skipped by all rules |
 | `extraRiskPaths` | `ExtraRiskPath[]`             | Custom path rules appended to the built-in set         |
+
+### Built-in presets
+
+Preset rules are deterministic high-severity path rules that layer on top of the built-ins:
+
+| Preset        | Adds rules for                                                                     |
+| ------------- | ---------------------------------------------------------------------------------- |
+| `nextjs-saas` | `app/api`, `pages/api`, server actions, `next.config.*`                            |
+| `supabase`    | `supabase/functions/**`, `supabase/config.toml`, common Supabase integration paths |
+| `stripe`      | webhook handlers and common Stripe integration paths                               |
+
+You can repeat `--preset` or combine multiple entries in config.
 
 ### `extraRiskPaths` fields
 
@@ -306,17 +332,14 @@ This tool is intentionally conservative. A false positive is cheaper than silent
 - **No semantic understanding.** The tool matches file paths and `package.json` content against regexes. It does not read or understand the code inside those files.
 - **No cross-file analysis.** Each file is evaluated independently. The tool cannot reason about how changes in one file affect another.
 - **package.json only for content inspection.** Dependency detection reads added lines from `package.json`. It does not inspect lockfiles or other manifests (`requirements.txt`, `Gemfile`, etc.).
-- **Git required.** The tool shells out to `git diff --name-status`. The repository must be a git repo with the base ref reachable (fetch it in CI with `git fetch origin <base>`).
+- **`--changed-files` is path-only unless name-status is provided.** Plain newline-delimited paths are treated as `modified`, so rules that depend on delete/rename semantics need `git diff --name-status` style input.
+- **Git is required unless `--changed-files` is used.** The default mode shells out to `git diff --name-status`. The repository must be a git repo with the base ref reachable (fetch it in CI with `git fetch origin <base>`).
 - **No history.** The tool inspects only the diff between `--base` and `--head`. It has no awareness of past changes or PR history.
 - **Path-based rules can produce false positives.** A file named `billing-utils-test.ts` will trigger `billing-file-touched` even if it is a test helper with no payment logic. Use `ignore` patterns to suppress known false positives.
 
-## Roadmap
+## Recent additions
 
-Ideas for future releases:
-
-- `--preset nextjs-saas`
-- `--preset supabase`
-- `--preset stripe`
+- `--preset nextjs-saas`, `--preset supabase`, and `--preset stripe`
 - `--format sarif`
 - `--format junit`
 - `--explain`
@@ -358,6 +381,8 @@ src/
   types.ts            # Shared TypeScript types
   reporters/
     text.ts           # Human-readable text output
+    junit.ts          # JUnit XML output
+    sarif.ts          # SARIF 2.1.0 output
     json.ts           # Machine-readable JSON output
     markdown.ts       # GitHub Markdown output
 tests/                # Vitest unit + edge-case tests

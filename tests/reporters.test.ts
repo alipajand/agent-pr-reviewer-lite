@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { renderText } from "../src/reporters/text.js";
 import { renderJson } from "../src/reporters/json.js";
+import { renderSarif } from "../src/reporters/sarif.js";
+import { renderJunit } from "../src/reporters/junit.js";
 import type { RenderOptions, ReviewReport, RiskFinding } from "../src/types.js";
 
 // ---------------------------------------------------------------------------
@@ -202,6 +204,16 @@ describe("renderText", () => {
       ].join("\n"),
     );
   });
+
+  it("includes deterministic explanation lines when explain mode is enabled", () => {
+    const out = renderText(
+      makeReport([
+        { ...highFinding, explain: "Matched built-in path pattern /auth/" },
+      ]),
+      { ...failedOpts, explain: true },
+    );
+    expect(out).toContain("explain: Matched built-in path pattern /auth/");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -305,5 +317,49 @@ describe("renderJson", () => {
       "supabase/migrations/20260604_add_org_policy.sql",
     );
     expect(parsed.findings[2].file).toBe("package.json");
+  });
+});
+
+describe("renderSarif", () => {
+  it("produces valid SARIF 2.1.0 JSON", () => {
+    const parsed = JSON.parse(
+      renderSarif(makeReport([highFinding]), failedOpts),
+    );
+    expect(parsed.version).toBe("2.1.0");
+    expect(parsed.runs[0].tool.driver.name).toBe("agent-pr-reviewer-lite");
+    expect(parsed.runs[0].results[0].ruleId).toBe("auth-file-touched");
+  });
+
+  it("includes explanation text in the SARIF message when enabled", () => {
+    const parsed = JSON.parse(
+      renderSarif(
+        makeReport([
+          { ...highFinding, explain: "Matched built-in path pattern /auth/" },
+        ]),
+        { ...failedOpts, explain: true },
+      ),
+    );
+    expect(parsed.runs[0].results[0].message.text).toContain(
+      "Matched built-in path pattern /auth/",
+    );
+  });
+});
+
+describe("renderJunit", () => {
+  it("produces JUnit XML with one testcase per finding", () => {
+    const out = renderJunit(
+      makeReport([highFinding, mediumFinding], "high"),
+      failedOpts,
+    );
+    expect(out).toContain('<testsuite name="agent-pr-reviewer-lite" tests="2"');
+    expect((out.match(/<testcase /g) ?? []).length).toBe(2);
+  });
+
+  it("marks only findings at or above the fail-on threshold as failures", () => {
+    const out = renderJunit(makeReport([highFinding, mediumFinding], "high"), {
+      failOn: "high",
+      result: "failed",
+    });
+    expect((out.match(/<failure /g) ?? []).length).toBe(1);
   });
 });

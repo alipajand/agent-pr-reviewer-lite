@@ -1,49 +1,15 @@
-import type {
-  RenderOptions,
-  ReviewReport,
-  RiskFinding,
-  RiskLevel,
-} from "../types.js";
-
-function capitalize(level: RiskLevel): string {
-  return level.charAt(0).toUpperCase() + level.slice(1);
-}
-
-/**
- * Short display text for a finding line.
- * For `dependency-added` the reason already carries the package name;
- * for every other rule the label is concise and avoids repeating the path.
- */
-function displayText(finding: RiskFinding): string {
-  return finding.id === "dependency-added" ? finding.reason : finding.label;
-}
-
-/**
- * Deduplicate findings by (id, file) pair, preserving original order.
- */
-function deduplicate(findings: RiskFinding[]): RiskFinding[] {
-  const seen = new Set<string>();
-  return findings.filter((f) => {
-    const key = `${f.id}\0${f.file}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-/**
- * Collect unique required-review labels, sorted alphabetically.
- */
-function requiredReviewLabels(findings: RiskFinding[]): string[] {
-  const labels = new Set<string>();
-  for (const f of findings) {
-    if (f.requiredReview) labels.add(f.requiredReview);
-  }
-  return [...labels].sort();
-}
+import type { RenderOptions, ReviewReport } from "../types.js";
+import {
+  capitalize,
+  displayText,
+  explainText,
+  requiredReviewLabels,
+  shouldExplain,
+  uniqueFindings,
+} from "./shared.js";
 
 export function renderText(report: ReviewReport, opts: RenderOptions): string {
-  const unique = deduplicate(report.findings);
+  const unique = uniqueFindings(report);
   const lines: string[] = [];
 
   lines.push(`Agent PR Risk: ${capitalize(report.overallRisk)}`);
@@ -54,6 +20,10 @@ export function renderText(report: ReviewReport, opts: RenderOptions): string {
     lines.push("Changed risky areas:");
     for (const f of unique) {
       lines.push(`- ${f.file} — ${displayText(f)}`);
+      if (shouldExplain(opts)) {
+        const explain = explainText(f);
+        if (explain) lines.push(`  explain: ${explain}`);
+      }
     }
 
     const reviewLabels = requiredReviewLabels(unique);

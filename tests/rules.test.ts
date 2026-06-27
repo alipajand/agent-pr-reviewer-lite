@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
   applyRules,
+  BUILTIN_PRESETS,
   DEFAULT_RULES,
+  buildPresetRules,
   extractAddedDependencies,
 } from "../src/rules.js";
 import { buildReport, shouldFail } from "../src/risk.js";
@@ -921,5 +923,30 @@ describe("shouldFail", () => {
     expect(shouldFail("high", "low")).toBe(true);
     expect(shouldFail("high", "medium")).toBe(true);
     expect(shouldFail("medium", "low")).toBe(true);
+  });
+});
+
+describe("buildPresetRules", () => {
+  it("builds rules for the requested preset", () => {
+    const rules = buildPresetRules(["nextjs-saas"]);
+    expect(rules.length).toBe(BUILTIN_PRESETS["nextjs-saas"].length);
+  });
+
+  it("nextjs-saas preset matches app/api routes", () => {
+    const findings = applyRules(
+      [file("app/api/users/route.ts")],
+      buildPresetRules(["nextjs-saas"]),
+    );
+    expect(findings.some((f) => f.id === "nextjs-api-route-changed")).toBe(
+      true,
+    );
+  });
+
+  it("stripe preset does not match unrelated files", () => {
+    const findings = applyRules(
+      [file("src/components/Button.tsx")],
+      buildPresetRules(["stripe"]),
+    );
+    expect(findings).toEqual([]);
   });
 });

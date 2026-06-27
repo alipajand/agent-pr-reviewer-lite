@@ -1,4 +1,9 @@
-export { getChangedFiles, parseNameStatus } from "./git.js";
+export {
+  getChangedFiles,
+  getChangedFilesFromInput,
+  parseChangedFilesInput,
+  parseNameStatus,
+} from "./git.js";
 export {
   COMMENT_MARKER,
   getPrNumber,
@@ -14,12 +19,21 @@ export {
   globToRegex,
   CONFIG_FILE_NAME,
 } from "./config.js";
-export { applyRules, DEFAULT_RULES, buildExtraRules } from "./rules.js";
+export {
+  applyRules,
+  DEFAULT_RULES,
+  BUILTIN_PRESETS,
+  BUILTIN_PRESET_NAMES,
+  buildExtraRules,
+  buildPresetRules,
+} from "./rules.js";
 export type { Rule } from "./rules.js";
 export { buildReport, shouldFail } from "./risk.js";
 export { renderText } from "./reporters/text.js";
 export { renderJson } from "./reporters/json.js";
 export { renderMarkdown } from "./reporters/markdown.js";
+export { renderSarif } from "./reporters/sarif.js";
+export { renderJunit } from "./reporters/junit.js";
 export type {
   ChangeStatus,
   ChangedFile,
@@ -32,5 +46,6 @@ export type {
   JsonReport,
   Config,
   ExtraRiskPath,
+  PresetName,
 } from "./types.js";
 export { RISK_LEVEL_ORDER } from "./types.js";

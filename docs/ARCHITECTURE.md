@@ -6,7 +6,7 @@
 
 > Did this PR touch areas that deserve human review before merge?
 
-It does this by diffing two git refs with `git diff --name-status`, applying a fixed set of deterministic path-pattern rules, and emitting a risk report in text, JSON, or Markdown format. There are no LLM calls, no external API calls (except the optional GitHub PR comment), and no filesystem writes.
+It does this by diffing two git refs with `git diff --name-status` or reading a provided changed-files list, applying a fixed set of deterministic path-pattern rules, and emitting a risk report in text, JSON, Markdown, SARIF, or JUnit format. There are no LLM calls, no external API calls (except the optional GitHub PR comment), and no filesystem writes.
 
 ---
 
@@ -21,12 +21,14 @@ It does this by diffing two git refs with `git diff --name-status`, applying a f
 │    ├── Config loader (config.ts)                         │
 │    │     └── auto-discover agent-pr-reviewer-lite.config.json
 │    │                                                     │
-│    ├── Git layer (git.ts)                                │
-│    │     └── execFileSync("git", ["diff", ...])          │
+│    ├── Git/input layer (git.ts)                          │
+│    │     ├── execFileSync("git", ["diff", ...])          │
+│    │     └── changed-files input parser                  │
 │    │           → ChangedFile[]                           │
 │    │                                                     │
 │    ├── Rule engine (rules.ts + risk.ts)                  │
 │    │     ├── DEFAULT_RULES (11 built-in rules)           │
+│    │     ├── buildPresetRules (built-in stack presets)   │
 │    │     ├── buildExtraRules (from config.extraRiskPaths) │
 │    │     └── applyRules → RiskFinding[]                  │
 │    │           └── buildReport → ReviewReport            │
@@ -34,7 +36,9 @@ It does this by diffing two git refs with `git diff --name-status`, applying a f
 │    ├── Reporters (reporters/)                            │
 │    │     ├── text.ts → stdout                            │
 │    │     ├── json.ts → stdout                            │
-│    │     └── markdown.ts → stdout                        │
+│    │     ├── markdown.ts → stdout                        │
+│    │     ├── sarif.ts → stdout                           │
+│    │     └── junit.ts → stdout                           │
 │    │                                                     │
 │    └── GitHub comment (github.ts)  [optional]           │
 │          └── fetch() → GitHub API /issues/:id/comments  │
@@ -52,13 +56,13 @@ External boundary:
 
 ### `src/cli.ts`
 
-Commander entry point. Parses `--base`, `--head`, `--format`, `--fail-on`, `--config`, `--github-comment`. Calls config loader, git layer, rule engine, and selected reporter. Handles exit codes 0/1/2.
+Commander entry point. Parses `--base`, `--head`, `--format`, `--fail-on`, `--config`, `--preset`, `--changed-files`, `--explain`, and `--github-comment`. Calls config loader, git/input layer, rule engine, and the selected reporter. Handles exit codes 0/1/2.
 
 ### `src/rules.ts`
 
-Defines `Rule` interface, the 11 `DEFAULT_RULES`, path-pattern sets (regexes), `extractAddedDependencies` for `package.json` content inspection, `applyRules` engine, and `buildExtraRules` for config-driven custom rules.
+Defines `Rule` interface, the 11 `DEFAULT_RULES`, built-in preset rule packs, path-pattern sets (regexes), `extractAddedDependencies` for `package.json` content inspection, `applyRules` engine, and `buildExtraRules` for config-driven custom rules.
 
-All rules are pure functions — they take a `ChangedFile` and return `RiskFinding[] | string | null`. No side effects.
+All rules are pure functions — they take a `ChangedFile` and return deterministic finding data only. No side effects.
 
 ### `src/risk.ts`
 
@@ -67,11 +71,11 @@ All rules are pure functions — they take a `ChangedFile` and return `RiskFindi
 
 ### `src/git.ts`
 
-`getChangedFiles` shells out to `git diff --name-status`. Uses `execFileSync` with an argument array to prevent shell injection. Validates inputs for null bytes. For `package.json`, also fetches added lines for content inspection.
+`getChangedFiles` shells out to `git diff --name-status`. `getChangedFilesFromInput` reads a newline-delimited file or stdin, accepting either plain paths or `git diff --name-status` lines. The git path uses `execFileSync` with an argument array to prevent shell injection and validates inputs for null bytes. For `package.json`, the git mode also fetches added lines for content inspection.
 
 ### `src/config.ts`
 
-Auto-discovers `agent-pr-reviewer-lite.config.json` by walking up from `cwd`. Parses and validates the JSON shape. Provides `globToRegex` to convert config glob patterns to RegExp objects.
+Auto-discovers `agent-pr-reviewer-lite.config.json` by walking up from `cwd`. Parses and validates the JSON shape, including optional preset names. Provides `globToRegex` to convert config glob patterns to RegExp objects.
 
 ### `src/github.ts`
 
@@ -83,11 +87,13 @@ Single source of truth for all shared TypeScript types (`ChangedFile`, `RiskFind
 
 ### `src/reporters/`
 
-Three reporter functions, each accepting `(report: ReviewReport, opts: RenderOptions) => string`:
+Five reporter functions, each accepting `(report: ReviewReport, opts: RenderOptions) => string`:
 
 - `text.ts` — human-readable terminal output
 - `json.ts` — machine-readable JSON (stable schema, `JsonReport` type)
 - `markdown.ts` — GitHub Markdown table suitable for PR comments
+- `sarif.ts` — SARIF 2.1.0 for code-scanning style tooling
+- `junit.ts` — JUnit XML for CI test dashboards
 
 ---
 
@@ -97,6 +103,11 @@ Three reporter functions, each accepting `(report: ReviewReport, opts: RenderOpt
 git diff --name-status base...head
   → raw lines
   → parseNameStatus()       (git.ts)
+  → ChangedFile[]
+
+or changed-files input
+  → raw lines
+  → parseChangedFilesInput() (git.ts)
   → ChangedFile[]
 
 ChangedFile[] + rules
@@ -139,6 +150,7 @@ Zero-config by default. Optional `agent-pr-reviewer-lite.config.json` supports:
 | ---------------- | ---------------------------------- |
 | `base`           | Default base ref                   |
 | `failOn`         | Default fail threshold             |
+| `presets`        | Built-in stack-specific rule packs |
 | `ignore`         | Glob patterns to skip              |
 | `extraRiskPaths` | Custom rules appended to built-ins |
 
@@ -151,6 +163,7 @@ CLI flags always override config file values.
 - **Add a new rule** — add an entry to `DEFAULT_RULES` in `src/rules.ts` with a `match` function, then add tests in `tests/rules.test.ts`.
 - **Add a new reporter** — add `src/reporters/<format>.ts`, wire it in `src/cli.ts`, and extend the `OutputFormat` type.
 - **Add a new config field** — extend the `Config` type in `src/types.ts`, update `src/config.ts` validation.
+- **Built-in stack presets** — use `presets` in config or `buildPresetRules` from the library API.
 - **Custom rules at runtime** — use `extraRiskPaths` in the config JSON or call `buildExtraRules` from the library API.
 
 ---

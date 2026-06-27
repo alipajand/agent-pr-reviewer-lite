@@ -15,7 +15,11 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { getChangedFiles } from "../src/git.js";
+import {
+  getChangedFiles,
+  getChangedFilesFromInput,
+  parseChangedFilesInput,
+} from "../src/git.js";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -271,5 +275,38 @@ describe("getChangedFiles — error handling", () => {
     expect(() => getChangedFiles("main", "HEAD\x00")).toThrow(
       /--head contains a null byte/,
     );
+  });
+});
+
+describe("changed-files input parsing", () => {
+  it("parses newline-delimited plain paths as modified files", () => {
+    expect(
+      parseChangedFilesInput("src/auth/session.ts\npnpm-lock.yaml\n"),
+    ).toEqual([
+      { path: "src/auth/session.ts", status: "modified" },
+      { path: "pnpm-lock.yaml", status: "modified" },
+    ]);
+  });
+
+  it("parses git --name-status lines including rename semantics", () => {
+    expect(
+      parseChangedFilesInput(
+        "A\tsrc/auth/session.ts\nD\ttests/auth.test.ts\nR100\told.ts\tnew.ts\n",
+      ),
+    ).toEqual([
+      { path: "src/auth/session.ts", status: "added" },
+      { path: "tests/auth.test.ts", status: "deleted" },
+      { path: "new.ts", previousPath: "old.ts", status: "renamed" },
+    ]);
+  });
+
+  it("reads changed files from an input file", () => {
+    const repo = setup();
+    const inputPath = join(repo, "changed-files.txt");
+    writeFileSync(inputPath, "A\tsupabase/functions/send.ts\n", "utf8");
+
+    expect(getChangedFilesFromInput(inputPath)).toEqual([
+      { path: "supabase/functions/send.ts", status: "added" },
+    ]);
   });
 });

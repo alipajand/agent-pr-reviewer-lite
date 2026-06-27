@@ -104,6 +104,9 @@ describe.skipIf(!distExists)("Dist smoke — node dist/cli.js", () => {
     expect(stdout).toContain("--head");
     expect(stdout).toContain("--format");
     expect(stdout).toContain("--fail-on");
+    expect(stdout).toContain("--preset");
+    expect(stdout).toContain("--changed-files");
+    expect(stdout).toContain("--explain");
     expect(stdout).toContain("--github-comment");
   });
 

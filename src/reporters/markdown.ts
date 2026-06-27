@@ -1,41 +1,18 @@
-import type {
-  RenderOptions,
-  ReviewReport,
-  RiskFinding,
-  RiskLevel,
-} from "../types.js";
-
-function capitalize(level: RiskLevel): string {
-  return level.charAt(0).toUpperCase() + level.slice(1);
-}
-
-function displayText(finding: RiskFinding): string {
-  return finding.id === "dependency-added" ? finding.reason : finding.label;
-}
-
-function deduplicate(findings: RiskFinding[]): RiskFinding[] {
-  const seen = new Set<string>();
-  return findings.filter((f) => {
-    const key = `${f.id}\0${f.file}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function requiredReviewLabels(findings: RiskFinding[]): string[] {
-  const labels = new Set<string>();
-  for (const f of findings) {
-    if (f.requiredReview) labels.add(f.requiredReview);
-  }
-  return [...labels].sort();
-}
+import type { RenderOptions, ReviewReport } from "../types.js";
+import {
+  capitalize,
+  displayText,
+  explainText,
+  requiredReviewLabels,
+  shouldExplain,
+  uniqueFindings,
+} from "./shared.js";
 
 export function renderMarkdown(
   report: ReviewReport,
   opts: RenderOptions,
 ): string {
-  const unique = deduplicate(report.findings);
+  const unique = uniqueFindings(report);
   const lines: string[] = [];
 
   lines.push(`## Agent PR Risk: ${capitalize(report.overallRisk)}`);
@@ -44,15 +21,27 @@ export function renderMarkdown(
     lines.push("No risky areas detected.");
   } else {
     lines.push("### Changed risky areas");
-    lines.push("| Severity | File | Finding | Required review |");
-    lines.push("|---|---|---|---|");
+    if (shouldExplain(opts)) {
+      lines.push("| Severity | File | Finding | Required review | Explain |");
+      lines.push("|---|---|---|---|---|");
+    } else {
+      lines.push("| Severity | File | Finding | Required review |");
+      lines.push("|---|---|---|---|");
+    }
 
     for (const f of unique) {
       const severity = capitalize(f.severity);
       const filePath = `\`${f.file}\``;
       const finding = displayText(f);
       const review = f.requiredReview ?? "";
-      lines.push(`| ${severity} | ${filePath} | ${finding} | ${review} |`);
+      if (shouldExplain(opts)) {
+        const explain = explainText(f) ?? "";
+        lines.push(
+          `| ${severity} | ${filePath} | ${finding} | ${review} | ${explain} |`,
+        );
+      } else {
+        lines.push(`| ${severity} | ${filePath} | ${finding} | ${review} |`);
+      }
     }
 
     const reviewLabels = requiredReviewLabels(unique);

@@ -255,6 +255,96 @@ describe("run — output formats", () => {
     ]);
     expect(stdout).toMatch(/^## Agent PR Risk:/m);
   });
+
+  it("sarif format: emits SARIF JSON", async () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      { "src/auth/session.ts": "export const a = 1;\n" },
+      "add auth",
+    );
+
+    const { stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "sarif",
+    ]);
+    const parsed = JSON.parse(stdout) as Record<string, unknown>;
+    expect(parsed).toHaveProperty("version", "2.1.0");
+  });
+
+  it("junit format: emits XML", async () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      { "src/auth/session.ts": "export const a = 1;\n" },
+      "add auth",
+    );
+
+    const { stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "junit",
+    ]);
+    expect(stdout).toMatch(/^<\?xml version="1\.0" encoding="UTF-8"\?>/);
+  });
+
+  it("text explain mode includes rule-trigger details", async () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      { "src/auth/session.ts": "export const a = 1;\n" },
+      "add auth",
+    );
+
+    const { stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--explain",
+    ]);
+    expect(stdout).toContain("explain:");
+    expect(stdout).toContain("Matched built-in path pattern");
+  });
+
+  it("changed-files input mode reads newline-delimited paths", async () => {
+    const repo = setup();
+    const inputPath = join(repo, "changed-files.txt");
+    writeFileSync(inputPath, "src/auth/session.ts\n", "utf8");
+
+    const { exitCode, stdout } = await runCli(["--changed-files", inputPath]);
+    expect(exitCode).toBe(1);
+    expect(stdout).toMatch(/Agent PR Risk: High/);
+  });
+
+  it("preset rules trigger additional findings", async () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      {
+        "app/api/users/route.ts": "export const GET = () => new Response();\n",
+      },
+      "add api route",
+    );
+
+    const { exitCode, stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--preset",
+      "nextjs-saas",
+    ]);
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("Next.js API route changed");
+  });
 });
 
 // ─── risk → exit code ─────────────────────────────────────────────────────────

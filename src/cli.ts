@@ -3,22 +3,40 @@ import { Command } from "commander";
 import { pathToFileURL } from "node:url";
 import { realpathSync } from "node:fs";
 import { loadConfig, isIgnored } from "./config.js";
-import { getChangedFiles } from "./git.js";
+import { getChangedFiles, getChangedFilesFromInput } from "./git.js";
 import { tryPostGitHubComment } from "./github.js";
 import { buildReport, shouldFail } from "./risk.js";
-import { DEFAULT_RULES, buildExtraRules } from "./rules.js";
+import {
+  BUILTIN_PRESET_NAMES,
+  DEFAULT_RULES,
+  buildExtraRules,
+  buildPresetRules,
+} from "./rules.js";
 import { renderText } from "./reporters/text.js";
 import { renderJson } from "./reporters/json.js";
 import { renderMarkdown } from "./reporters/markdown.js";
+import { renderSarif } from "./reporters/sarif.js";
+import { renderJunit } from "./reporters/junit.js";
 import type {
   CliOptions,
   OutputFormat,
+  PresetName,
   RenderOptions,
   RiskLevel,
 } from "./types.js";
 
-const VALID_FORMATS: OutputFormat[] = ["text", "json", "markdown"];
+const VALID_FORMATS: OutputFormat[] = [
+  "text",
+  "json",
+  "markdown",
+  "sarif",
+  "junit",
+];
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
+
+function collectPreset(value: string, previous: string[] = []): string[] {
+  return [...previous, value];
+}
 
 function assertOutputFormat(value: string): OutputFormat {
   if (!VALID_FORMATS.includes(value as OutputFormat)) {
@@ -42,6 +60,21 @@ function assertRiskLevel(value: string): RiskLevel {
     process.exit(1);
   }
   return value as RiskLevel;
+}
+
+function assertPresets(values: string[]): PresetName[] {
+  const invalid = values.filter(
+    (value) => !BUILTIN_PRESET_NAMES.includes(value as PresetName),
+  );
+  if (invalid.length > 0) {
+    console.error(
+      `Error: --preset contains invalid value(s): ${invalid.join(", ")}.\n` +
+        `  Allowed values: ${BUILTIN_PRESET_NAMES.join(", ")}\n` +
+        `  Example: --preset nextjs-saas --preset stripe`,
+    );
+    process.exit(1);
+  }
+  return [...new Set(values)] as PresetName[];
 }
 
 export async function run(argv: string[] = process.argv): Promise<void> {
@@ -70,7 +103,7 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     .option(
       "--format <format>",
       "Output format: text (human-readable), json (machine-readable),\n" +
-        "  or markdown (GitHub PR comment).",
+        "  markdown (GitHub PR comment), sarif, or junit.",
       "text",
     )
     .option(
@@ -78,6 +111,22 @@ export async function run(argv: string[] = process.argv): Promise<void> {
       "Exit with code 1 when the overall risk is at or above this level.\n" +
         "  Allowed: low | medium | high. Overrides the config file value.\n" +
         "  Default: high",
+    )
+    .option(
+      "--preset <name>",
+      "Apply a built-in preset rule pack. Repeatable.\n" +
+        `  Allowed: ${BUILTIN_PRESET_NAMES.join(" | ")}`,
+      collectPreset,
+      [],
+    )
+    .option(
+      "--changed-files <path>",
+      "Read changed files from a newline-delimited file instead of git diff.\n" +
+        "  Accepts plain paths or git --name-status lines. Use '-' for stdin.",
+    )
+    .option(
+      "--explain",
+      "Include deterministic rule-trigger details in human-readable output.",
     )
     .option(
       "--github-comment",
@@ -100,6 +149,12 @@ Examples:
 
   # JSON output for downstream CI steps
   agent-pr-reviewer-lite --base origin/main --head HEAD --format json
+
+  # SARIF for code-scanning style consumers
+  agent-pr-reviewer-lite --base origin/main --format sarif
+
+  # Read changed files from stdin
+  git diff --name-status origin/main...HEAD | agent-pr-reviewer-lite --changed-files -
 
   # Markdown report + PR comment (GitHub Actions)
   agent-pr-reviewer-lite --base origin/\$BASE_REF --format markdown --github-comment
@@ -131,25 +186,44 @@ Examples:
         failOn: assertRiskLevel(
           (opts.failOn as string | undefined) ?? config?.failOn ?? "high",
         ),
+        changedFiles: opts.changedFiles as string | undefined,
+        explain: Boolean(opts.explain),
+        presets: assertPresets([
+          ...((config?.presets ?? []) as string[]),
+          ...((opts.preset as string[]) ?? []),
+        ]),
       };
 
       const ignorePatterns = config?.ignore ?? [];
+      const presetRules = (options.presets ?? []).length
+        ? buildPresetRules(options.presets ?? [])
+        : [];
       const extraRules = config?.extraRiskPaths
         ? buildExtraRules(config.extraRiskPaths)
         : [];
-      const rules = [...DEFAULT_RULES, ...extraRules];
+      const rules = [...DEFAULT_RULES, ...presetRules, ...extraRules];
 
       let allFiles;
       try {
-        allFiles = getChangedFiles(options.base, options.head);
+        allFiles = options.changedFiles
+          ? getChangedFilesFromInput(options.changedFiles)
+          : getChangedFiles(options.base, options.head);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        console.error(
-          `Error: git command failed.\n` +
-            `  ${message}\n` +
-            `  Make sure "${options.base}" and "${options.head}" are valid git refs,\n` +
-            `  and that you have fetched the base branch (git fetch origin ${options.base}).`,
-        );
+        if (options.changedFiles) {
+          console.error(
+            `Error: failed to read changed files input.\n` +
+              `  ${message}\n` +
+              `  Make sure "${options.changedFiles}" exists and contains newline-delimited paths or git --name-status lines.`,
+          );
+        } else {
+          console.error(
+            `Error: git command failed.\n` +
+              `  ${message}\n` +
+              `  Make sure "${options.base}" and "${options.head}" are valid git refs,\n` +
+              `  and that you have fetched the base branch (git fetch origin ${options.base}).`,
+          );
+        }
         process.exit(2);
       }
 
@@ -164,12 +238,17 @@ Examples:
       const renderOpts: RenderOptions = {
         failOn: options.failOn,
         result: failed ? "failed" : "passed",
+        explain: options.explain,
       };
 
       if (options.format === "json") {
         console.log(renderJson(report, renderOpts));
       } else if (options.format === "markdown") {
         console.log(renderMarkdown(report, renderOpts));
+      } else if (options.format === "sarif") {
+        console.log(renderSarif(report, renderOpts));
+      } else if (options.format === "junit") {
+        console.log(renderJunit(report, renderOpts));
       } else {
         console.log(renderText(report, renderOpts));
       }

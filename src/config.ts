@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Config, ExtraRiskPath, RiskLevel } from "./types.js";
+import { BUILTIN_PRESET_NAMES } from "./rules.js";
+import type { Config, ExtraRiskPath, PresetName, RiskLevel } from "./types.js";
 
 export const CONFIG_FILE_NAME = "agent-pr-reviewer-lite.config.json";
 
@@ -52,6 +53,12 @@ export function isIgnored(path: string, patterns: string[]): boolean {
 
 function isValidRiskLevel(v: unknown): v is RiskLevel {
   return v === "low" || v === "medium" || v === "high";
+}
+
+function isValidPresetName(v: unknown): v is PresetName {
+  return (
+    typeof v === "string" && BUILTIN_PRESET_NAMES.includes(v as PresetName)
+  );
 }
 
 function parseExtraRiskPath(item: unknown, index: number): ExtraRiskPath {
@@ -126,6 +133,18 @@ function parseConfig(raw: unknown): Config {
       throw new Error("config.ignore must be an array of strings");
     }
     config.ignore = obj.ignore as string[];
+  }
+
+  if ("presets" in obj) {
+    if (
+      !Array.isArray(obj.presets) ||
+      obj.presets.some((preset) => !isValidPresetName(preset))
+    ) {
+      throw new Error(
+        `config.presets must be an array containing only: ${BUILTIN_PRESET_NAMES.join(", ")}`,
+      );
+    }
+    config.presets = obj.presets as PresetName[];
   }
 
   if ("extraRiskPaths" in obj) {

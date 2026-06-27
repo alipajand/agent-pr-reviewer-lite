@@ -178,12 +178,14 @@ describe("loadConfig", () => {
       base: "main",
       failOn: "medium",
       ignore: ["docs/**", "README.md"],
+      presets: ["stripe"],
       extraRiskPaths: [],
     });
     const config = loadConfig(join(tmpDir, CONFIG_FILE_NAME));
     expect(config?.base).toBe("main");
     expect(config?.failOn).toBe("medium");
     expect(config?.ignore).toEqual(["docs/**", "README.md"]);
+    expect(config?.presets).toEqual(["stripe"]);
     expect(config?.extraRiskPaths).toEqual([]);
   });
 
@@ -238,6 +240,11 @@ describe("loadConfig", () => {
   it("throws when ignore is not an array", () => {
     const filePath = writeConfig({ ignore: "docs/**" });
     expect(() => loadConfig(filePath)).toThrow("ignore");
+  });
+
+  it("throws when presets contains an invalid preset name", () => {
+    const filePath = writeConfig({ presets: ["nope"] });
+    expect(() => loadConfig(filePath)).toThrow("config.presets");
   });
 
   it("throws when extraRiskPaths entry is missing required field", () => {

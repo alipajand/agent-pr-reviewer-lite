@@ -16,6 +16,7 @@ export type RiskFinding = {
   severity: RiskLevel;
   file: string;
   reason: string;
+  explain?: string;
   requiredReview?: string;
 };
 
@@ -27,19 +28,25 @@ export type ReviewReport = {
   findings: RiskFinding[];
 };
 
-export type OutputFormat = "text" | "json" | "markdown";
+export type PresetName = "nextjs-saas" | "supabase" | "stripe";
+
+export type OutputFormat = "text" | "json" | "markdown" | "sarif" | "junit";
 
 export type CliOptions = {
   base: string;
   head: string;
   format: OutputFormat;
   failOn: RiskLevel;
+  changedFiles?: string;
+  explain?: boolean;
+  presets?: PresetName[];
 };
 
 /** Options passed to every reporter so they can render the CI block. */
 export type RenderOptions = {
   failOn: RiskLevel;
   result: "passed" | "failed";
+  explain?: boolean;
 };
 
 /** A single entry in the extraRiskPaths config array. */
@@ -56,6 +63,7 @@ export type Config = {
   base?: string;
   failOn?: RiskLevel;
   ignore?: string[];
+  presets?: PresetName[];
   extraRiskPaths?: ExtraRiskPath[];
 };
 

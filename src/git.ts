@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import type { ChangedFile, ChangeStatus } from "./types.js";
 
 /** Files whose diff content we want to capture for content-inspection rules. */
@@ -46,6 +47,24 @@ export function parseNameStatus(line: string): ChangedFile | null {
   }
 
   return { path, status };
+}
+
+export function parseChangedFilesInput(input: string): ChangedFile[] {
+  return input
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parsed = parseNameStatus(line);
+      if (parsed) return parsed;
+      return { path: line, status: "modified" as const };
+    });
+}
+
+export function getChangedFilesFromInput(source: string): ChangedFile[] {
+  const content =
+    source === "-" ? readFileSync(0, "utf8") : readFileSync(source, "utf8");
+  return parseChangedFilesInput(content);
 }
 
 /**
