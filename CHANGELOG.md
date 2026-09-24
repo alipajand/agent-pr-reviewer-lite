@@ -11,6 +11,9 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `--config-ref <ref>`: read the config from a trusted git ref (for example `origin/main`) instead of the pull request's checkout, so a PR cannot change the settings that review it.
+- `rules` in the config: turn a rule `"off"` or set its severity. Unknown rule IDs are rejected, and `reviewer-config-changed` cannot be turned off or downgraded.
+- `--format github`: GitHub Actions workflow annotations, one per finding on the changed file, with escaping so file names cannot inject commands.
 - `test-skipped` (high): added lines in test files that skip or focus tests (`it.skip`, `.only`, `xit`, `fdescribe`, `test.fixme`, `pytest.mark.skip`/`xfail`, `t.Skip`, `@Disabled`, `#[ignore]`).
 - `lint-suppression-added` (medium): added lint, type-check, or coverage suppressions in non-test files.
 - `dependency-added` covers every `package.json` in the change, not only the root one.

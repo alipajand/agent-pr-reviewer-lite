@@ -616,3 +616,164 @@ describe("run — ignore patterns cannot weaken the review", () => {
     expect(stderr).toContain("not an option");
   });
 });
+
+describe("run — rule settings and trusted config", () => {
+  it("turns a rule off through config.rules", async () => {
+    const repo = setup();
+    writeFileSync(
+      join(repo, "agent-pr-reviewer-lite.config.json"),
+      JSON.stringify({ rules: { "package-lock-changed": "off" } }),
+      "utf8",
+    );
+    git(["add", "-A"], repo);
+    git(["commit", "-m", "config"], repo);
+    writeAndCommit(
+      repo,
+      { "pnpm-lock.yaml": "lockfileVersion: '9.0'\n" },
+      "lock",
+    );
+
+    const { stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "json",
+    ]);
+    expect(JSON.parse(stdout).findingCount).toBe(0);
+  });
+
+  it("raises a rule's severity through config.rules", async () => {
+    const repo = setup();
+    writeFileSync(
+      join(repo, "agent-pr-reviewer-lite.config.json"),
+      JSON.stringify({ rules: { "package-lock-changed": "high" } }),
+      "utf8",
+    );
+    git(["add", "-A"], repo);
+    git(["commit", "-m", "config"], repo);
+    writeAndCommit(
+      repo,
+      { "pnpm-lock.yaml": "lockfileVersion: '9.0'\n" },
+      "lock",
+    );
+
+    const { exitCode } = await runCli(["--base", "HEAD~1", "--head", "HEAD"]);
+    expect(exitCode).toBe(1);
+  });
+
+  it("rejects unknown rule IDs and downgrading reviewer-config-changed", async () => {
+    const repo = setup();
+    for (const rules of [
+      { "no-such-rule": "off" },
+      { "reviewer-config-changed": "low" },
+    ]) {
+      writeFileSync(
+        join(repo, "agent-pr-reviewer-lite.config.json"),
+        JSON.stringify({ rules }),
+        "utf8",
+      );
+      const { exitCode, stderr } = await runCli([
+        "--base",
+        "HEAD",
+        "--head",
+        "HEAD",
+      ]);
+      expect(exitCode).toBe(2);
+      expect(stderr).toMatch(/unknown rule|cannot be turned off/);
+    }
+  });
+
+  it("reviews with the config from --config-ref, not the pull request's copy", async () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      { "agent-pr-reviewer-lite.config.json": JSON.stringify({ ignore: [] }) },
+      "trusted config",
+    );
+    git(["branch", "trusted"], repo);
+    writeAndCommit(
+      repo,
+      {
+        "agent-pr-reviewer-lite.config.json": JSON.stringify({
+          ignore: ["src/**"],
+        }),
+        "src/auth/tokens.ts": "export {};\n",
+      },
+      "pr weakens config",
+    );
+
+    const fromTree = await runCli([
+      "--base",
+      "trusted",
+      "--head",
+      "HEAD",
+      "--format",
+      "json",
+    ]);
+    const treeFiles = JSON.parse(fromTree.stdout).findings.map(
+      (f: { file: string }) => f.file,
+    );
+    expect(treeFiles).not.toContain("src/auth/tokens.ts");
+
+    const fromRef = await runCli([
+      "--base",
+      "trusted",
+      "--head",
+      "HEAD",
+      "--config-ref",
+      "trusted",
+      "--format",
+      "json",
+    ]);
+    const refFiles = JSON.parse(fromRef.stdout).findings.map(
+      (f: { file: string }) => f.file,
+    );
+    expect(refFiles).toContain("src/auth/tokens.ts");
+  });
+
+  it("uses no config when the file does not exist at --config-ref", async () => {
+    setup();
+    const { exitCode } = await runCli([
+      "--base",
+      "HEAD",
+      "--head",
+      "HEAD",
+      "--config-ref",
+      "HEAD",
+    ]);
+    expect(exitCode).toBeUndefined();
+  });
+
+  it("rejects a --config-ref that git would read as an option", async () => {
+    setup();
+    const { exitCode, stderr } = await runCli([
+      "--base",
+      "HEAD",
+      "--head",
+      "HEAD",
+      "--config-ref",
+      "--output=x",
+    ]);
+    expect(exitCode).toBe(2);
+    expect(stderr).toContain("not an option");
+  });
+
+  it("prints workflow annotations with --format github", async () => {
+    const repo = setup();
+    writeAndCommit(repo, { "src/auth/session.ts": "export {};\n" }, "auth");
+    const { stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+      "--format",
+      "github",
+    ]);
+    expect(stdout).toMatch(
+      /^::error file=src\/auth\/session.ts,title=PR risk%3A /m,
+    );
+    expect(stdout).toContain("Agent PR Risk: High");
+  });
+});

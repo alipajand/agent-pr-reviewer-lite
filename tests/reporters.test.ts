@@ -3,6 +3,7 @@ import { renderText } from "../src/reporters/text.js";
 import { renderJson } from "../src/reporters/json.js";
 import { renderSarif } from "../src/reporters/sarif.js";
 import { renderJunit } from "../src/reporters/junit.js";
+import { renderGithub } from "../src/reporters/github.js";
 import type { RenderOptions, ReviewReport, RiskFinding } from "../src/types.js";
 
 // ---------------------------------------------------------------------------
@@ -421,5 +422,47 @@ describe("reporters — untrusted file names", () => {
       findings: Array<{ file: string }>;
     };
     expect(parsed.findings[0].file).toBe(hostile.file);
+  });
+});
+
+describe("renderGithub", () => {
+  const opts: RenderOptions = { failOn: "high", result: "failed" };
+  const report: ReviewReport = {
+    base: "main",
+    head: "HEAD",
+    overallRisk: "high",
+    totalFiles: 2,
+    findings: [highFinding, depFinding],
+  };
+
+  it("maps severities to annotation levels", () => {
+    const lines = renderGithub(report, opts).split("\n");
+    expect(lines[0].startsWith("::error file=src/auth/session.ts,")).toBe(true);
+    expect(lines[1].startsWith("::warning file=package.json,")).toBe(true);
+  });
+
+  it("escapes property separators and cannot start a new command", () => {
+    const out = renderGithub(
+      {
+        ...report,
+        findings: [
+          {
+            ...highFinding,
+            file: "a,b:c.ts\n::add-mask::x",
+            reason: "r\n::error::spoof",
+          },
+        ],
+      },
+      opts,
+    );
+    expect(out).toContain("file=a%2Cb%3Ac.ts");
+    expect(out.split("\n").filter((l) => l.startsWith("::"))).toHaveLength(1);
+  });
+
+  it("ends with a summary line", () => {
+    const lines = renderGithub(report, opts).split("\n");
+    expect(lines[lines.length - 1]).toBe(
+      "Agent PR Risk: High — 2 findings, fail-on high, failed",
+    );
   });
 });

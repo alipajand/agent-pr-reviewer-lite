@@ -2,7 +2,14 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { compileGlob } from "./glob.js";
 import { BUILTIN_PRESET_NAMES } from "./rules.js";
-import type { Config, ExtraRiskPath, PresetName, RiskLevel } from "./types.js";
+import { readFileAtRef } from "./git.js";
+import type {
+  Config,
+  ExtraRiskPath,
+  PresetName,
+  RiskLevel,
+  RuleSetting,
+} from "./types.js";
 
 export const CONFIG_FILE_NAME = "agent-pr-reviewer-lite.config.json";
 
@@ -158,6 +165,25 @@ function parseConfig(raw: unknown): Config {
     config.presets = obj.presets as PresetName[];
   }
 
+  if ("rules" in obj) {
+    const rules = obj.rules;
+    if (typeof rules !== "object" || rules === null || Array.isArray(rules)) {
+      throw new Error(
+        "config.rules must be an object mapping rule IDs to a setting",
+      );
+    }
+    const parsed: Record<string, RuleSetting> = {};
+    for (const [id, setting] of Object.entries(rules)) {
+      if (setting !== "off" && !isValidRiskLevel(setting)) {
+        throw new Error(
+          `config.rules["${id}"] must be "off", "low", "medium", or "high"`,
+        );
+      }
+      parsed[id] = setting;
+    }
+    config.rules = parsed;
+  }
+
   if ("extraRiskPaths" in obj) {
     if (!Array.isArray(obj.extraRiskPaths)) {
       throw new Error("config.extraRiskPaths must be an array");
@@ -212,5 +238,29 @@ export function loadConfig(configPath?: string, cwd?: string): Config | null {
     throw new Error(`Failed to parse config file '${filePath}': ${msg}`);
   }
 
+  return parseConfig(raw);
+}
+
+/**
+ * Load the config from git `ref` (for example origin/main) instead of the
+ * working tree. In CI the working tree is the pull request itself, so a PR
+ * could otherwise change the settings that decide its own review.
+ * Returns null when the file does not exist at `ref`.
+ */
+export function loadConfigFromRef(
+  ref: string,
+  configPath?: string,
+): Config | null {
+  const rel = configPath ?? CONFIG_FILE_NAME;
+  const text = readFileAtRef(ref, rel, MAX_CONFIG_BYTES);
+  if (text === null) return null;
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to parse config file '${rel}' at ${ref}: ${msg}`);
+  }
   return parseConfig(raw);
 }
