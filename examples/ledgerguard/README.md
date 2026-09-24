@@ -13,13 +13,13 @@ This directory contains a ready-to-use, strict configuration of `agent-pr-review
 
 ---
 
-## Integration steps (run once the package is published)
+## Integration steps
 
 ### 1. Install as a dev dependency
 
 ```bash
-# in the LedgerGuard repository root
-pnpm add -D agent-pr-reviewer-lite
+# in the LedgerGuard repository root, pinned to a reviewed commit
+pnpm add -D github:alipajand/agent-pr-reviewer-lite#<commit-sha>
 ```
 
 ### 2. Copy the config file

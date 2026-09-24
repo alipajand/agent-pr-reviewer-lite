@@ -28,6 +28,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Install docs use GitHub (`pnpm add -D github:alipajand/agent-pr-reviewer-lite#<sha>`). The npm name is unregistered, so the old `pnpm add -D agent-pr-reviewer-lite` instruction would install whatever someone else publishes under it. A `prepare` script builds `dist/` for git installs.
 - Added lines come from a single `git diff -U0` for the whole change instead of one call per inspected file. Header paths are unquoted and prefixes forced, so `core.quotePath` and `diff.noprefix` settings do not affect it. `ChangedFile.addedLines` is now set for every non-deleted text file.
 - Renamed files are evaluated against both their new and previous paths. An `ignore` pattern hides a rename only when it matches both.
 - Markdown output renders dependency names as inline code.
