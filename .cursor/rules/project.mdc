@@ -1,3 +1,9 @@
+---
+description: Project rules for agent-pr-reviewer-lite
+globs: ["src/**", "tests/**", "docs/**"]
+alwaysApply: true
+---
+
 # agent-pr-reviewer-lite — Cursor rules
 
 Deterministic PR risk reviewer for agent-generated code changes.
