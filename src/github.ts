@@ -2,6 +2,15 @@ import { readFileSync } from "node:fs";
 
 export const COMMENT_MARKER = "<!-- agent-pr-reviewer-lite -->";
 
+/** GitHub rejects issue comments longer than 65,536 characters. */
+const MAX_COMMENT_LENGTH = 65_000;
+const TRUNCATION_NOTE =
+  "\n\n_Report truncated to fit GitHub's comment size limit. Run the CLI locally for the full list._";
+
+/** Comments fetched per page, and the most pages scanned for an existing report. */
+const COMMENTS_PER_PAGE = 100;
+const MAX_COMMENT_PAGES = 50;
+
 type FetchFn = typeof fetch;
 
 // ---------------------------------------------------------------------------
@@ -42,21 +51,44 @@ export function readEventPayload(eventPath: string): unknown {
  * subsequent runs can find and update the comment instead of creating a new one.
  */
 export function buildCommentBody(markdown: string): string {
-  return `${COMMENT_MARKER}\n${markdown}`;
+  const body = `${COMMENT_MARKER}\n${markdown}`;
+  if (body.length <= MAX_COMMENT_LENGTH) return body;
+  return (
+    body.slice(0, MAX_COMMENT_LENGTH - TRUNCATION_NOTE.length) + TRUNCATION_NOTE
+  );
 }
 
 // ---------------------------------------------------------------------------
 // GitHub API calls
 // ---------------------------------------------------------------------------
 
-type GitHubComment = {
+export type GitHubComment = {
   id: number;
-  body: string;
+  body?: string | null;
+  user?: { login?: string; type?: string } | null;
 };
 
 /**
- * Find an existing bot comment on the PR (one whose body contains COMMENT_MARKER),
- * then update it or create a new one.
+ * True for a report comment this tool posted earlier. Anyone can paste the
+ * marker into their own comment, so matching on it alone would let a user bait
+ * the bot into overwriting their comment with the report — which they could
+ * then edit. The comment must start with the marker and be written by
+ * `authorLogin` when given, or otherwise by a bot account (`GITHUB_TOKEN`
+ * posts as `github-actions[bot]`).
+ */
+export function isOwnReportComment(
+  comment: GitHubComment,
+  authorLogin?: string,
+): boolean {
+  if (typeof comment.body !== "string") return false;
+  if (!comment.body.startsWith(COMMENT_MARKER)) return false;
+  if (authorLogin) return comment.user?.login === authorLogin;
+  return comment.user?.type === "Bot";
+}
+
+/**
+ * Find an existing report comment on the PR (see `isOwnReportComment`), then
+ * update it or create a new one.
  *
  * Accepts an optional `fetchFn` for dependency injection in tests.
  */
@@ -65,9 +97,10 @@ export async function postOrUpdateComment(opts: {
   repository: string;
   prNumber: number;
   body: string;
+  authorLogin?: string;
   fetchFn?: FetchFn;
 }): Promise<void> {
-  const { token, repository, prNumber, body } = opts;
+  const { token, repository, prNumber, body, authorLogin } = opts;
   const fetchImpl = opts.fetchFn ?? fetch;
 
   const [owner, repo] = repository.split("/");
@@ -79,20 +112,26 @@ export async function postOrUpdateComment(opts: {
     "X-GitHub-Api-Version": "2022-11-28",
   };
 
-  // 1. List all PR comments (PR comments use the Issues API)
-  const listRes = await fetchImpl(
-    `${base}/repos/${owner}/${repo}/issues/${prNumber}/comments`,
-    { headers },
-  );
-  if (!listRes.ok) {
-    throw new Error(
-      `GitHub API error listing comments: ${listRes.status} ${listRes.statusText}`,
+  // 1. Page through PR comments (PR comments use the Issues API) looking for
+  //    an earlier report; the default page size of 30 would miss it on busy PRs.
+  let existing: GitHubComment | undefined;
+  for (let page = 1; page <= MAX_COMMENT_PAGES && !existing; page++) {
+    const listRes = await fetchImpl(
+      `${base}/repos/${owner}/${repo}/issues/${prNumber}/comments?per_page=${COMMENTS_PER_PAGE}&page=${page}`,
+      { headers },
     );
-  }
-  const comments = (await listRes.json()) as GitHubComment[];
+    if (!listRes.ok) {
+      throw new Error(
+        `GitHub API error listing comments: ${listRes.status} ${listRes.statusText}`,
+      );
+    }
+    const comments = (await listRes.json()) as GitHubComment[];
+    if (!Array.isArray(comments)) break;
 
-  // 2. Look for an existing bot comment
-  const existing = comments.find((c) => c.body.includes(COMMENT_MARKER));
+    // 2. Look for an existing report comment we own
+    existing = comments.find((c) => isOwnReportComment(c, authorLogin));
+    if (comments.length < COMMENTS_PER_PAGE) break;
+  }
 
   if (existing) {
     // 3a. Update the existing comment
@@ -144,6 +183,7 @@ export function isValidRepository(value: string): boolean {
 export async function tryPostGitHubComment(
   markdown: string,
   fetchFn?: FetchFn,
+  authorLogin?: string,
 ): Promise<void> {
   const token = process.env.GITHUB_TOKEN;
   const repository = process.env.GITHUB_REPOSITORY;
@@ -163,5 +203,12 @@ export async function tryPostGitHubComment(
   if (prNumber === null) return;
 
   const body = buildCommentBody(markdown);
-  await postOrUpdateComment({ token, repository, prNumber, body, fetchFn });
+  await postOrUpdateComment({
+    token,
+    repository,
+    prNumber,
+    body,
+    authorLogin,
+    fetchFn,
+  });
 }

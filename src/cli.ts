@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { pathToFileURL } from "node:url";
 import { realpathSync } from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 import { loadConfig, isIgnored } from "./config.js";
 import { getChangedFiles, getChangedFilesFromInput } from "./git.js";
 import { tryPostGitHubComment } from "./github.js";
@@ -9,6 +10,7 @@ import { buildReport, shouldFail } from "./risk.js";
 import {
   BUILTIN_PRESET_NAMES,
   DEFAULT_RULES,
+  REVIEWER_CONFIG_PATH,
   buildExtraRules,
   buildPresetRules,
 } from "./rules.js";
@@ -18,6 +20,7 @@ import { renderMarkdown } from "./reporters/markdown.js";
 import { renderSarif } from "./reporters/sarif.js";
 import { renderJunit } from "./reporters/junit.js";
 import type {
+  ChangedFile,
   CliOptions,
   OutputFormat,
   PresetName,
@@ -77,6 +80,46 @@ function assertPresets(values: string[]): PresetName[] {
   return [...new Set(values)] as PresetName[];
 }
 
+/**
+ * Repo-relative, forward-slash form of a custom `--config` path, or null when
+ * it lives outside the working directory and so cannot appear in the diff.
+ */
+function customConfigDiffPath(configPath: string | undefined): string | null {
+  if (!configPath) return null;
+  const rel = relative(process.cwd(), resolve(configPath));
+  if (
+    rel === "" ||
+    rel.startsWith(`..${sep}`) ||
+    rel === ".." ||
+    isAbsolute(rel)
+  ) {
+    return null;
+  }
+  return rel.split(sep).join("/");
+}
+
+/**
+ * Ignore patterns come from the repository under review, so they must not be
+ * able to hide a change to the reviewer's own config, and a rename is hidden
+ * only when both its old and new paths are ignored.
+ */
+function filterIgnored(
+  files: ChangedFile[],
+  patterns: string[],
+  protectedPaths: string[],
+): ChangedFile[] {
+  if (patterns.length === 0) return files;
+  const isProtected = (p: string) =>
+    REVIEWER_CONFIG_PATH.test(p) || protectedPaths.includes(p);
+  return files.filter((f) => {
+    const paths = [f.path, f.previousPath].filter(
+      (p): p is string => p !== undefined,
+    );
+    if (paths.some(isProtected)) return true;
+    return !paths.every((p) => isIgnored(p, patterns));
+  });
+}
+
 export async function run(argv: string[] = process.argv): Promise<void> {
   const program = new Command();
 
@@ -134,6 +177,12 @@ export async function run(argv: string[] = process.argv): Promise<void> {
         "  Requires GITHUB_TOKEN, GITHUB_REPOSITORY, and GITHUB_EVENT_PATH\n" +
         "  environment variables and a pull_request event payload.\n" +
         "  Silently skipped when any prerequisite is missing (safe for local use).",
+    )
+    .option(
+      "--github-comment-author <login>",
+      "Only update an earlier report comment written by this login.\n" +
+        "  Default: any bot account (GITHUB_TOKEN posts as github-actions[bot]).\n" +
+        "  Set it when posting with a personal access token.",
     )
     .addHelpText(
       "after",
@@ -201,7 +250,26 @@ Examples:
       const extraRules = config?.extraRiskPaths
         ? buildExtraRules(config.extraRiskPaths)
         : [];
-      const rules = [...DEFAULT_RULES, ...presetRules, ...extraRules];
+      const configDiffPath = customConfigDiffPath(
+        opts.config as string | undefined,
+      );
+      const configRules = configDiffPath
+        ? buildExtraRules([
+            {
+              id: "reviewer-config-changed",
+              label: "PR risk reviewer config changed",
+              severity: "high",
+              patterns: [configDiffPath],
+              requiredReview: "risk review policy",
+            },
+          ])
+        : [];
+      const rules = [
+        ...DEFAULT_RULES,
+        ...configRules,
+        ...presetRules,
+        ...extraRules,
+      ];
 
       let allFiles;
       try {
@@ -227,10 +295,11 @@ Examples:
         process.exit(2);
       }
 
-      const files =
-        ignorePatterns.length > 0
-          ? allFiles.filter((f) => !isIgnored(f.path, ignorePatterns))
-          : allFiles;
+      const files = filterIgnored(
+        allFiles,
+        ignorePatterns,
+        configDiffPath ? [configDiffPath] : [],
+      );
 
       const report = buildReport(options.base, options.head, files, rules);
       const failed = shouldFail(report.overallRisk, options.failOn);
@@ -256,7 +325,11 @@ Examples:
       if (opts.githubComment) {
         const md = renderMarkdown(report, renderOpts);
         try {
-          await tryPostGitHubComment(md);
+          await tryPostGitHubComment(
+            md,
+            undefined,
+            opts.githubCommentAuthor as string | undefined,
+          );
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           console.error(`Warning: Failed to post GitHub comment: ${msg}`);

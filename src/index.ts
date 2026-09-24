@@ -3,7 +3,9 @@ export {
   getChangedFilesFromInput,
   parseChangedFilesInput,
   parseNameStatus,
+  parseNameStatusZ,
 } from "./git.js";
+export { compileGlob, globMatch } from "./glob.js";
 export {
   COMMENT_MARKER,
   getPrNumber,

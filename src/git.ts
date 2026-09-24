@@ -5,6 +5,9 @@ import type { ChangedFile, ChangeStatus } from "./types.js";
 /** Files whose diff content we want to capture for content-inspection rules. */
 const CONTENT_INSPECT_FILES = new Set(["package.json"]);
 
+/** Large monorepo diffs exceed Node's 1 MiB default; beyond this, fail loudly. */
+const MAX_GIT_OUTPUT_BYTES = 64 * 1024 * 1024;
+
 /**
  * Reject refs containing null bytes before they reach execFileSync, which
  * would throw its own lower-level error. Keeps the error message consistent.
@@ -12,6 +15,28 @@ const CONTENT_INSPECT_FILES = new Set(["package.json"]);
 function assertNoNullBytes(value: string, name: string): void {
   if (value.includes("\x00")) {
     throw new Error(`Failed to run git diff: ${name} contains a null byte`);
+  }
+}
+
+/**
+ * Refs can come from the config file of the repository under review, so a
+ * value such as `--output=/some/file` must never reach git as an option.
+ * `--end-of-options` is passed as well; this check gives a clear error first.
+ */
+function assertSafeRef(value: string, name: string): void {
+  assertNoNullBytes(value, name);
+  if (value.trim() === "") {
+    throw new Error(`Failed to run git diff: ${name} is empty`);
+  }
+  if (value.startsWith("-")) {
+    throw new Error(
+      `Failed to run git diff: ${name} must be a git ref, not an option ("${value}")`,
+    );
+  }
+  if (/[\x00-\x1f\x7f]/.test(value)) {
+    throw new Error(
+      `Failed to run git diff: ${name} contains a control character`,
+    );
   }
 }
 
@@ -49,6 +74,56 @@ export function parseNameStatus(line: string): ChangedFile | null {
   return { path, status };
 }
 
+function toChangeStatus(statusCode: string): ChangeStatus {
+  switch (statusCode.charAt(0)) {
+    case "A":
+    case "C":
+      return "added";
+    case "D":
+      return "deleted";
+    case "R":
+      return "renamed";
+    default:
+      return "modified";
+  }
+}
+
+/**
+ * Parse `git diff --name-status -z` output. NUL-separated output is used
+ * because git otherwise quotes and octal-escapes unusual paths
+ * (`"supabase/migrations/\303\274.sql"`), which would slip past anchored
+ * rule patterns such as `^supabase/migrations/`.
+ */
+export function parseNameStatusZ(output: string): ChangedFile[] {
+  const tokens = output.split("\0");
+  const files: ChangedFile[] = [];
+
+  let i = 0;
+  while (i < tokens.length) {
+    const statusCode = tokens[i++]?.trim();
+    if (!statusCode) continue;
+
+    const status = toChangeStatus(statusCode);
+    if (statusCode.startsWith("R") || statusCode.startsWith("C")) {
+      const previousPath = tokens[i++];
+      const path = tokens[i++];
+      if (!previousPath || !path) break;
+      files.push(
+        status === "renamed"
+          ? { path, previousPath, status }
+          : { path, status },
+      );
+      continue;
+    }
+
+    const path = tokens[i++];
+    if (!path) break;
+    files.push({ path, status });
+  }
+
+  return files;
+}
+
 export function parseChangedFilesInput(input: string): ChangedFile[] {
   return input
     .split("\n")
@@ -77,10 +152,21 @@ export function getChangedFilesFromInput(source: string): ChangedFile[] {
  */
 function getAddedLines(base: string, head: string, filePath: string): string[] {
   try {
+    // Plain unified diff regardless of user or repo config: no colour codes,
+    // external diff drivers, or textconv filters that could hide added lines.
     const output = execFileSync(
       "git",
-      ["diff", `${base}...${head}`, "--", filePath],
-      { encoding: "utf8" },
+      [
+        "diff",
+        "--no-color",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--end-of-options",
+        `${base}...${head}`,
+        "--",
+        filePath,
+      ],
+      { encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES },
     );
     const added: string[] = [];
     for (const line of output.split("\n")) {
@@ -102,33 +188,34 @@ function getAddedLines(base: string, head: string, filePath: string): string[] {
  * literal string arguments and rejects unknown refs normally.
  */
 export function getChangedFiles(base: string, head: string): ChangedFile[] {
-  assertNoNullBytes(base, "--base");
-  assertNoNullBytes(head, "--head");
+  assertSafeRef(base, "--base");
+  assertSafeRef(head, "--head");
 
   let output: string;
   try {
     output = execFileSync(
       "git",
-      ["diff", "--name-status", `${base}...${head}`],
-      { encoding: "utf8" },
+      [
+        "diff",
+        "--name-status",
+        "-z",
+        "--no-color",
+        "--end-of-options",
+        `${base}...${head}`,
+      ],
+      { encoding: "utf8", maxBuffer: MAX_GIT_OUTPUT_BYTES },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`Failed to run git diff: ${message}`);
   }
 
-  const lines = output.trim().split("\n").filter(Boolean);
-  const files: ChangedFile[] = [];
+  const files = parseNameStatusZ(output);
 
-  for (const line of lines) {
-    const file = parseNameStatus(line);
-    if (!file) continue;
-
+  for (const file of files) {
     if (CONTENT_INSPECT_FILES.has(file.path) && file.status !== "deleted") {
       file.addedLines = getAddedLines(base, head, file.path);
     }
-
-    files.push(file);
   }
 
   return files;

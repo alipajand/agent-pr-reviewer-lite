@@ -1,4 +1,4 @@
-import { globToRegex } from "./config.js";
+import { compileGlob } from "./glob.js";
 import type {
   ChangedFile,
   ExtraRiskPath,
@@ -151,6 +151,10 @@ const PUBLIC_ROUTE_PATHS = [
   /^src\/pages\//,
 ];
 
+/** Matches the auto-discovered config file anywhere in the tree. */
+export const REVIEWER_CONFIG_PATH =
+  /(?:^|\/)agent-pr-reviewer-lite\.config\.json$/;
+
 const PRICING_COPY_PATHS = [
   /pricing/i,
   /\bplans?\b/i,
@@ -291,14 +295,43 @@ export const DEFAULT_RULES: Rule[] = [
     severity: "high",
     requiredReview: "deleted tests",
     match(file) {
-      const matched =
-        file.status === "deleted"
-          ? firstMatchingPattern(file.path, TEST_PATHS)
-          : null;
-      if (matched) {
+      if (file.status === "deleted") {
+        const matched = firstMatchingPattern(file.path, TEST_PATHS);
+        if (matched) {
+          return {
+            reason: `Test file '${file.path}' was deleted`,
+            explain: `Matched built-in path pattern ${matched.toString()} with deleted status`,
+          };
+        }
+      }
+      // Moving a test out of the suite removes it from the run just like a delete.
+      if (file.status === "renamed" && file.previousPath) {
+        const matched = firstMatchingPattern(file.previousPath, TEST_PATHS);
+        if (matched && !matchesAny(file.path, TEST_PATHS)) {
+          return {
+            reason: `Test file '${file.previousPath}' was moved out of the test suite to '${file.path}'`,
+            explain: `Previous path matched built-in path pattern ${matched.toString()}; new path matches no test pattern`,
+          };
+        }
+      }
+      return null;
+    },
+  },
+
+  {
+    id: "reviewer-config-changed",
+    label: "PR risk reviewer config changed",
+    severity: "high",
+    requiredReview: "risk review policy",
+    match(file) {
+      const paths = [file.path, file.previousPath].filter(
+        (p): p is string => p !== undefined,
+      );
+      const matchedPath = paths.find((p) => REVIEWER_CONFIG_PATH.test(p));
+      if (matchedPath) {
         return {
-          reason: `Test file '${file.path}' was deleted`,
-          explain: `Matched built-in path pattern ${matched.toString()} with deleted status`,
+          reason: `Reviewer config '${matchedPath}' was ${file.status} — a pull request can use it to weaken its own review (ignore patterns, base ref)`,
+          explain: `Matched built-in path pattern ${REVIEWER_CONFIG_PATH.toString()}`,
         };
       }
       return null;
@@ -422,6 +455,21 @@ export const DEFAULT_RULES: Rule[] = [
 // Engine
 // ---------------------------------------------------------------------------
 
+/**
+ * A rename is evaluated against its new path first, then its previous path,
+ * so moving `src/auth/session.ts` to an innocuous location is still flagged.
+ */
+function ruleViews(file: ChangedFile): ChangedFile[] {
+  if (
+    file.status !== "renamed" ||
+    !file.previousPath ||
+    file.previousPath === file.path
+  ) {
+    return [file];
+  }
+  return [file, { ...file, path: file.previousPath }];
+}
+
 export function applyRules(
   files: ChangedFile[],
   rules: Rule[] = DEFAULT_RULES,
@@ -430,15 +478,15 @@ export function applyRules(
 
   for (const file of files) {
     for (const rule of rules) {
-      const result = rule.match(file);
-      if (result === null) continue;
+      for (const view of ruleViews(file)) {
+        const result = rule.match(view);
+        if (result === null) continue;
 
-      if (Array.isArray(result)) {
+        const matches = Array.isArray(result) ? result : [result];
         findings.push(
-          ...result.map((item) => normalizeMatch(rule, file, item)),
+          ...matches.map((item) => normalizeMatch(rule, view, item)),
         );
-      } else {
-        findings.push(normalizeMatch(rule, file, result));
+        break;
       }
     }
   }
@@ -547,14 +595,14 @@ export const BUILTIN_PRESET_NAMES = Object.keys(
  */
 export function buildExtraRules(extraRiskPaths: ExtraRiskPath[]): Rule[] {
   return extraRiskPaths.map((erp) => {
-    const regexes = erp.patterns.map(globToRegex);
+    const matchers = erp.patterns.map(compileGlob);
     return {
       id: erp.id,
       label: erp.label,
       severity: erp.severity,
       requiredReview: erp.requiredReview,
       match(file: ChangedFile): RuleMatchDetail | null {
-        const matchIndex = regexes.findIndex((r) => r.test(file.path));
+        const matchIndex = matchers.findIndex((matches) => matches(file.path));
         if (matchIndex !== -1) {
           return {
             reason: `File '${file.path}' matches configured risk pattern for '${erp.label}'`,

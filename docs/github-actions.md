@@ -25,37 +25,37 @@ jobs:
 
     steps:
       - name: Checkout repository (full history)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
-
-      - name: Set up Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
+          persist-credentials: false
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7
         with:
-          version: latest
+          node-version: "22"
 
       - name: Install dependencies
-        run: pnpm install
-
-      - name: Fetch base branch
-        run: git fetch origin ${{ github.base_ref }}
+        run: pnpm install --frozen-lockfile
 
       - name: Run agent-pr-reviewer-lite
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
           pnpm agent-pr-reviewer-lite \
-            --base origin/${{ github.base_ref }} \
+            --base "origin/${BASE_REF}" \
             --head HEAD \
             --fail-on high
 ```
 
+Pass `github.base_ref` through an environment variable rather than interpolating `${{ }}` into the script, and always pass `--base`: the config file comes from the pull request's own checkout.
+
 ## PR comment mode
 
-Pass `--github-comment` to automatically post (or update) a Markdown report as a PR comment. The bot finds any existing comment it previously left (identified by a hidden HTML marker) and updates it in place, so there is only ever one comment per PR.
+Pass `--github-comment` to automatically post (or update) a Markdown report as a PR comment. The bot finds the comment it previously left and updates it in place, so there is only ever one comment per PR. A comment counts as the bot's only if it starts with the hidden HTML marker and was written by a bot account (`GITHUB_TOKEN` posts as `github-actions[bot]`). If you post with a personal access token, pass `--github-comment-author <login>`.
 
 ```yaml
 permissions:
@@ -70,11 +70,12 @@ jobs:
       - name: Run agent-pr-reviewer-lite with PR comment
         run: |
           pnpm agent-pr-reviewer-lite \
-            --base origin/${{ github.base_ref }} \
+            --base "origin/${BASE_REF}" \
             --head HEAD \
             --format markdown \
             --github-comment
         env:
+          BASE_REF: ${{ github.base_ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
@@ -114,7 +115,7 @@ The tool compares two git refs using `git diff`. A shallow clone (the default) m
 
 ```bash
 pnpm agent-pr-reviewer-lite \
-  --base origin/${{ github.base_ref }} \
+  --base "origin/${BASE_REF}" \
   --head HEAD \
   --fail-on high
 ```
@@ -125,7 +126,7 @@ The check passes for `low` and `medium` risk. It only blocks merges when a **hig
 
 ```bash
 pnpm agent-pr-reviewer-lite \
-  --base origin/${{ github.base_ref }} \
+  --base "origin/${BASE_REF}" \
   --head HEAD \
   --fail-on medium
 ```
@@ -138,11 +139,15 @@ If `agent-pr-reviewer-lite.config.json` is present at the repo root, the workflo
 
 ```yaml
 - name: Run agent-pr-reviewer-lite
+  env:
+    BASE_REF: ${{ github.base_ref }}
   run: |
     pnpm agent-pr-reviewer-lite \
-      --base origin/${{ github.base_ref }} \
+      --base "origin/${BASE_REF}" \
       --head HEAD
 ```
+
+The config file is read from the pull request's checkout, so a PR can edit it. Any such edit is reported as `reviewer-config-changed` (high) and cannot be hidden by `ignore`, but review those changes before merging.
 
 See [Configuration](../README.md#configuration) for the full config schema.
 
@@ -153,9 +158,11 @@ Pass `--format json` to emit machine-readable output that a subsequent step can 
 ```yaml
 - name: Run agent-pr-reviewer-lite (JSON)
   id: risk
+  env:
+    BASE_REF: ${{ github.base_ref }}
   run: |
     pnpm agent-pr-reviewer-lite \
-      --base origin/${{ github.base_ref }} \
+      --base "origin/${BASE_REF}" \
       --head HEAD \
       --format json \
       --fail-on high \
@@ -163,7 +170,7 @@ Pass `--format json` to emit machine-readable output that a subsequent step can 
   continue-on-error: true
 
 - name: Upload risk report
-  uses: actions/upload-artifact@v4
+  uses: actions/upload-artifact@v7
   with:
     name: risk-report
     path: risk-report.json

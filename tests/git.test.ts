@@ -19,7 +19,9 @@ import {
   getChangedFiles,
   getChangedFilesFromInput,
   parseChangedFilesInput,
+  parseNameStatusZ,
 } from "../src/git.js";
+import { existsSync } from "node:fs";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -308,5 +310,94 @@ describe("changed-files input parsing", () => {
     expect(getChangedFilesFromInput(inputPath)).toEqual([
       { path: "supabase/functions/send.ts", status: "added" },
     ]);
+  });
+});
+
+// ─── security: refs and path handling ───────────────────────────────────────
+
+describe("getChangedFiles — option injection", () => {
+  it("rejects a --base that git would read as an option", () => {
+    const repo = setup();
+    const target = join(repo, "written-by-git.txt");
+    expect(() => getChangedFiles(`--output=${target}`, "HEAD")).toThrow(
+      /must be a git ref, not an option/,
+    );
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it("rejects a --head that starts with a dash", () => {
+    setup();
+    expect(() => getChangedFiles("HEAD", "-p")).toThrow(/not an option/);
+  });
+
+  it("rejects refs with control characters or empty refs", () => {
+    setup();
+    expect(() => getChangedFiles("main\r", "HEAD")).toThrow(
+      /control character/,
+    );
+    expect(() => getChangedFiles(" ", "HEAD")).toThrow(/is empty/);
+  });
+});
+
+describe("getChangedFiles — unusual paths", () => {
+  it("returns non-ASCII paths unquoted so anchored rules still match", () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      { "supabase/migrations/2026_drop_\u00fc.sql": "drop table users;\n" },
+      "add migration",
+    );
+    const files = getChangedFiles("HEAD~1", "HEAD");
+    expect(files.map((f) => f.path)).toEqual([
+      "supabase/migrations/2026_drop_\u00fc.sql",
+    ]);
+  });
+
+  it("returns paths containing spaces and quotes verbatim", () => {
+    const repo = setup();
+    writeAndCommit(repo, { 'src/auth/we "ird" name.ts': "x\n" }, "add");
+    const files = getChangedFiles("HEAD~1", "HEAD");
+    expect(files[0]?.path).toBe('src/auth/we "ird" name.ts');
+  });
+});
+
+describe("parseNameStatusZ", () => {
+  it("parses added, modified, deleted, and renamed entries", () => {
+    const out = [
+      "A",
+      "a.ts",
+      "M",
+      "b.ts",
+      "D",
+      "c.ts",
+      "R087",
+      "old/x.ts",
+      "new/x.ts",
+      "",
+    ].join("\0");
+    expect(parseNameStatusZ(out)).toEqual([
+      { path: "a.ts", status: "added" },
+      { path: "b.ts", status: "modified" },
+      { path: "c.ts", status: "deleted" },
+      { path: "new/x.ts", previousPath: "old/x.ts", status: "renamed" },
+    ]);
+  });
+
+  it("treats copies as additions and other codes as modifications", () => {
+    const out = ["C100", "src/a.ts", "src/b.ts", "T", "link", ""].join("\0");
+    expect(parseNameStatusZ(out)).toEqual([
+      { path: "src/b.ts", status: "added" },
+      { path: "link", status: "modified" },
+    ]);
+  });
+
+  it("keeps newlines inside file names", () => {
+    expect(parseNameStatusZ("A\0a\nb.ts\0")).toEqual([
+      { path: "a\nb.ts", status: "added" },
+    ]);
+  });
+
+  it("returns an empty list for empty output", () => {
+    expect(parseNameStatusZ("")).toEqual([]);
   });
 });

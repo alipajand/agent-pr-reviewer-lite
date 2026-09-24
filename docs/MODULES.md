@@ -9,8 +9,9 @@
 | `types.ts`              | types, constants                                                             | All shared TypeScript types; `RISK_LEVEL_ORDER`    |
 | `rules.ts`              | `DEFAULT_RULES`, `applyRules`, `buildExtraRules`, `extractAddedDependencies` | Deterministic risk rules engine                    |
 | `risk.ts`               | `buildReport`, `shouldFail`                                                  | Combines files + rules into a `ReviewReport`       |
-| `git.ts`                | `getChangedFiles`, `parseNameStatus`                                         | Shells out to `git diff --name-status`             |
-| `config.ts`             | `loadConfig`, `globToRegex`                                                  | Config auto-discovery and glob-to-regex conversion |
+| `git.ts`                | `getChangedFiles`, `parseNameStatus`, `parseNameStatusZ`                     | Shells out to `git diff --name-status -z`          |
+| `glob.ts`               | `compileGlob`, `globMatch`                                                   | Linear-time glob matching for config patterns      |
+| `config.ts`             | `loadConfig`, `isIgnored`, `globToRegex`                                     | Config auto-discovery and ignore matching          |
 | `github.ts`             | `postOrUpdateComment`                                                        | Posts or updates a PR comment via fetch            |
 | `reporters/text.ts`     | `renderText`                                                                 | Human-readable text output                         |
 | `reporters/json.ts`     | `renderJson`                                                                 | Machine-readable JSON output (`JsonReport` shape)  |

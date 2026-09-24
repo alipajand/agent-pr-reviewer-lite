@@ -386,3 +386,40 @@ describe("renderJunit", () => {
     expect((out.match(/<failure /g) ?? []).length).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Untrusted text in plain-text and XML output
+// ---------------------------------------------------------------------------
+
+describe("reporters — untrusted file names", () => {
+  const hostile: RiskFinding = {
+    ...highFinding,
+    file: "src/auth/x.ts\n::error title=Approved::looks safe\u001b[2J",
+  };
+  const report: ReviewReport = {
+    base: "main",
+    head: "HEAD",
+    overallRisk: "high",
+    totalFiles: 1,
+    findings: [hostile],
+  };
+  const opts: RenderOptions = { failOn: "high", result: "failed" };
+
+  it("text output cannot start a GitHub Actions workflow command", () => {
+    const out = renderText(report, opts);
+    expect(out.split("\n").some((l) => l.startsWith("::"))).toBe(false);
+    expect(out).not.toContain("\u001b");
+  });
+
+  it("JUnit output contains no XML-illegal control characters", () => {
+    const out = renderJunit(report, opts);
+    expect(out).not.toMatch(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/);
+  });
+
+  it("JSON output keeps the raw path for machine consumers", () => {
+    const parsed = JSON.parse(renderJson(report, opts)) as {
+      findings: Array<{ file: string }>;
+    };
+    expect(parsed.findings[0].file).toBe(hostile.file);
+  });
+});

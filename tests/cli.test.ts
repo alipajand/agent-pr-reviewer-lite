@@ -530,3 +530,89 @@ describe("run — --github-comment without env", () => {
     expect(stdout).toMatch(/Agent PR Risk: Low/);
   });
 });
+
+describe("run — ignore patterns cannot weaken the review", () => {
+  it("still reports a reviewer config change even when the config ignores everything", async () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      {
+        "agent-pr-reviewer-lite.config.json": JSON.stringify({
+          ignore: ["**"],
+        }),
+        "src/auth/session.ts": "export {};\n",
+      },
+      "weaken review",
+    );
+
+    const { exitCode, stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+    ]);
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("agent-pr-reviewer-lite.config.json");
+    expect(stdout).not.toContain("src/auth/session.ts");
+  });
+
+  it("reports a rename whose previous path is not ignored", async () => {
+    const repo = setup();
+    writeFileSync(
+      join(repo, "agent-pr-reviewer-lite.config.json"),
+      JSON.stringify({ ignore: ["scratch/**"] }),
+      "utf8",
+    );
+    writeAndCommit(
+      repo,
+      { "src/auth/tokens.ts": "export const s = 1;\n" },
+      "add auth",
+    );
+    mkdirSync(join(repo, "scratch"));
+    git(["mv", "src/auth/tokens.ts", "scratch/tokens.ts"], repo);
+    git(["commit", "-m", "move"], repo);
+
+    const { exitCode, stdout } = await runCli([
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+    ]);
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("src/auth/tokens.ts");
+  });
+
+  it("flags changes to a custom --config file", async () => {
+    const repo = setup();
+    mkdirSync(join(repo, "ci"), { recursive: true });
+    writeAndCommit(
+      repo,
+      { "ci/review.json": JSON.stringify({ ignore: ["**"] }) },
+      "cfg",
+    );
+
+    const { exitCode, stdout } = await runCli([
+      "--config",
+      "ci/review.json",
+      "--base",
+      "HEAD~1",
+      "--head",
+      "HEAD",
+    ]);
+    expect(exitCode).toBe(1);
+    expect(stdout).toContain("ci/review.json");
+  });
+
+  it("rejects a base ref from the config that git would read as an option", async () => {
+    const repo = setup();
+    writeFileSync(
+      join(repo, "agent-pr-reviewer-lite.config.json"),
+      JSON.stringify({ base: "--output=pwned.txt" }),
+      "utf8",
+    );
+
+    const { exitCode, stderr } = await runCli(["--head", "HEAD"]);
+    expect(exitCode).toBe(2);
+    expect(stderr).toContain("not an option");
+  });
+});

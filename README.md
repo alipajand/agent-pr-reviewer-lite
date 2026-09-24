@@ -69,6 +69,9 @@ Options:
                        Read newline-delimited changed files from a file or stdin (-)
   --explain            Include deterministic rule-trigger details in human-readable output
   --github-comment     Post/update a PR comment with the markdown report
+  --github-comment-author <login>
+                       Only update an earlier report comment by this login
+                       (default: any bot account, e.g. github-actions[bot])
   -V, --version        Print version
   -h, --help           Show help
 ```
@@ -235,6 +238,8 @@ You can repeat `--preset` or combine multiple entries in config.
 | `docs/**`     | Everything under `docs/`                                  |
 | `src/**/*.ts` | All `.ts` files under `src/`                              |
 
+Patterns are matched in linear time, so a hostile pattern cannot stall a CI run.
+
 ### Example: LedgerGuard preset
 
 A strict preset config for a financial application (contract ingestion, tenant isolation, renewals, commitment ledger, currency normalization, and billing) is available in [`examples/ledgerguard/`](examples/ledgerguard/). It defines seven high-severity custom rules that go beyond the built-ins.
@@ -263,31 +268,33 @@ jobs:
   risk-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
 
-      - uses: pnpm/action-setup@v4
-
-      - run: pnpm install
-
-      - run: git fetch origin ${{ github.base_ref }}
+      - run: pnpm install --frozen-lockfile
 
       - name: Run agent-pr-reviewer-lite
         run: |
           pnpm agent-pr-reviewer-lite \
-            --base origin/${{ github.base_ref }} \
+            --base "origin/${BASE_REF}" \
             --head HEAD \
             --format markdown \
             --fail-on high \
             --github-comment
         env:
+          BASE_REF: ${{ github.base_ref }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+Always pass `--base` explicitly in CI. The config file is read from the pull request's own checkout, so a `base` value there is controlled by the PR author.
 
 `fetch-depth: 0` is required so the base branch history is available for the diff. `--github-comment` posts (or updates) the markdown report as a PR comment; it is silently skipped when `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, or `GITHUB_EVENT_PATH` are absent — safe for local runs.
 
@@ -307,21 +314,37 @@ The `--github-comment` flag never changes the exit code. A comment-posting failu
 
 All built-in rules are deterministic regex pattern matches. No ML, no heuristics.
 
-| ID                      | Severity   | Trigger                                                                                                           |
-| ----------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------- |
-| `auth-file-touched`     | **High**   | Files matching `/auth/`, `session.ts`, `middleware.ts`, `jwt`, Clerk, NextAuth                                    |
-| `billing-file-touched`  | **High**   | Files matching `/billing/`, `/stripe/`, `checkout`, `subscription`, `invoice`, `payment`                          |
-| `security-file-touched` | **High**   | Files matching `/security/`, `rls`, `policy`, `permissions`, `access-control`, `rate-limit`, `csrf`, `cors`       |
-| `migration-changed`     | **High**   | Files under `supabase/migrations/`, `migrations/`, `prisma/migrations/`, or `*.sql` in a migrations dir           |
-| `test-deleted`          | **High**   | Deleted files matching `*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, or `test/`                                 |
-| `env-var-file-changed`  | **Medium** | `.env`, `.env.local`, `.env.production`, `.env.development`, `.env.example`                                       |
-| `package-lock-changed`  | **Medium** | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`                                                   |
-| `generated-file-edited` | **Medium** | Paths containing `generated/`, `__generated__/`, `.generated.ts`, `.gen.ts`                                       |
-| `public-route-changed`  | **Medium** | Next.js `app/**/page.tsx`, `app/**/layout.tsx`, `pages/**` (src/ variants too)                                    |
-| `pricing-copy-changed`  | **Medium** | Files matching `pricing`, `plans`, `checkout`, `subscription`, `billing`, `marketing`, `landing`                  |
-| `dependency-added`      | **Medium** | New entries in `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies` in `package.json` |
+| ID                        | Severity   | Trigger                                                                                                           |
+| ------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------- |
+| `auth-file-touched`       | **High**   | Files matching `/auth/`, `session.ts`, `middleware.ts`, `jwt`, Clerk, NextAuth                                    |
+| `billing-file-touched`    | **High**   | Files matching `/billing/`, `/stripe/`, `checkout`, `subscription`, `invoice`, `payment`                          |
+| `security-file-touched`   | **High**   | Files matching `/security/`, `rls`, `policy`, `permissions`, `access-control`, `rate-limit`, `csrf`, `cors`       |
+| `migration-changed`       | **High**   | Files under `supabase/migrations/`, `migrations/`, `prisma/migrations/`, or `*.sql` in a migrations dir           |
+| `test-deleted`            | **High**   | Deleted files matching `*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, or `test/`, or tests moved out of those    |
+| `reviewer-config-changed` | **High**   | `agent-pr-reviewer-lite.config.json` (any depth) or the file passed to `--config`; `ignore` cannot hide it        |
+| `env-var-file-changed`    | **Medium** | `.env`, `.env.local`, `.env.production`, `.env.development`, `.env.example`                                       |
+| `package-lock-changed`    | **Medium** | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`                                                   |
+| `generated-file-edited`   | **Medium** | Paths containing `generated/`, `__generated__/`, `.generated.ts`, `.gen.ts`                                       |
+| `public-route-changed`    | **Medium** | Next.js `app/**/page.tsx`, `app/**/layout.tsx`, `pages/**` (src/ variants too)                                    |
+| `pricing-copy-changed`    | **Medium** | Files matching `pricing`, `plans`, `checkout`, `subscription`, `billing`, `marketing`, `landing`                  |
+| `dependency-added`        | **Medium** | New entries in `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies` in `package.json` |
 
 Custom rules added via `extraRiskPaths` appear after the built-ins at whatever severity you configure.
+
+Renamed files are checked against both the new and the previous path, so moving `src/auth/tokens.ts` to `scratch/tokens.ts` is still flagged. An `ignore` pattern hides a rename only when it matches both paths.
+
+## Security
+
+The tool is designed to run on pull requests you do not control:
+
+- **No option injection.** `--base` and `--head` (including `base` from the config file) must be git refs. Values that start with `-` are rejected, and git receives `--end-of-options` before the refs.
+- **Exact paths.** Changed files are read with `git diff -z`, so paths with spaces, quotes, or non-ASCII characters are matched exactly instead of in git's quoted form.
+- **A PR cannot hide its own review.** Changes to the reviewer config are always reported as `reviewer-config-changed` (high), and `ignore` patterns cannot suppress them. Renames are evaluated on both paths.
+- **Safe output.** File names and dependency names are rendered as inline code in Markdown, HTML is escaped, and control characters are removed from text output, so a file name cannot inject `::workflow-commands::` or terminal escapes.
+- **PR comments.** Only a comment that starts with the report marker and was written by a bot account (or by `--github-comment-author`) is updated. Pasting the marker into your own comment does not make the bot overwrite it.
+- **Bounded work.** Glob patterns match in linear time, and config files must be regular files under 1 MiB.
+
+See [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## False positives
 
@@ -344,6 +367,8 @@ This tool is intentionally conservative. A false positive is cheaper than silent
 - `--format junit`
 - `--explain`
 - `--changed-files <path>`
+- `reviewer-config-changed` rule and rename-aware rule evaluation
+- `--github-comment-author <login>`
 
 ## Related tools
 
@@ -373,10 +398,11 @@ pnpm dev -- --base main --format text
 src/
   cli.ts              # CLI entry point (commander)
   index.ts            # Public API exports
-  git.ts              # git diff --name-status parser
+  git.ts              # git diff --name-status -z parser
+  glob.ts             # Linear-time glob matcher
   rules.ts            # Deterministic risk rules
   risk.ts             # Report builder and fail logic
-  config.ts           # Config file loader and glob matcher
+  config.ts           # Config file loader and ignore matching
   github.ts           # GitHub PR comment (fetch-based, no Octokit)
   types.ts            # Shared TypeScript types
   reporters/

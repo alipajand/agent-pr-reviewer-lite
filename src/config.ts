@@ -1,9 +1,12 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
+import { compileGlob } from "./glob.js";
 import { BUILTIN_PRESET_NAMES } from "./rules.js";
 import type { Config, ExtraRiskPath, PresetName, RiskLevel } from "./types.js";
 
 export const CONFIG_FILE_NAME = "agent-pr-reviewer-lite.config.json";
+
+const MAX_CONFIG_BYTES = 1024 * 1024;
 
 // ---------------------------------------------------------------------------
 // Glob matcher
@@ -14,6 +17,9 @@ export const CONFIG_FILE_NAME = "agent-pr-reviewer-lite.config.json";
  *
  * Supported: *, ** (cross-directory), prefix/suffix matching.
  * All other characters are treated as literals (dots are escaped, etc.).
+ *
+ * Kept for library consumers. Internal matching uses `compileGlob`, which has
+ * the same semantics but cannot backtrack exponentially.
  */
 // Private-Use-Area sentinels — safe because file paths never contain these.
 const T_DSTAR_SLASH = "\uE000"; // **/  → zero or more path-segment prefixes
@@ -37,14 +43,19 @@ export function globToRegex(pattern: string): RegExp {
   p = p.replace(/\uE002/g, ".*"); // **  → anything
   p = p.replace(/\uE003/g, "[^/]*"); // *   → no slashes
 
-  return new RegExp(`^${p}$`);
+  // `s` lets `**` span newlines, which git -z output can carry in file names.
+  return new RegExp(`^${p}$`, "s");
 }
 
 /**
  * Returns true if `path` matches any of the given glob `patterns`.
+ *
+ * Uses the linear-time matcher rather than `globToRegex`, because patterns
+ * come from the repository under review and the regex form can backtrack
+ * exponentially.
  */
 export function isIgnored(path: string, patterns: string[]): boolean {
-  return patterns.some((pattern) => globToRegex(pattern).test(path));
+  return patterns.some((pattern) => compileGlob(pattern)(path));
 }
 
 // ---------------------------------------------------------------------------
@@ -179,6 +190,18 @@ export function loadConfig(configPath?: string, cwd?: string): Config | null {
       throw new Error(`Config file not found: ${filePath}`);
     }
     return null;
+  }
+
+  // The config usually comes from the repository under review: refuse FIFOs,
+  // devices, and oversized files that could hang or exhaust the process.
+  const stat = statSync(filePath);
+  if (!stat.isFile()) {
+    throw new Error(`Config path is not a regular file: ${filePath}`);
+  }
+  if (stat.size > MAX_CONFIG_BYTES) {
+    throw new Error(
+      `Config file is larger than ${MAX_CONFIG_BYTES} bytes: ${filePath}`,
+    );
   }
 
   let raw: unknown;

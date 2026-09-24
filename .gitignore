@@ -8,3 +8,5 @@ coverage/
 .env
 .env.*
 *.log
+.idea/
+.serena/
