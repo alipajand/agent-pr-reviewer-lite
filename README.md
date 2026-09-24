@@ -38,11 +38,13 @@ Agent-generated PRs often touch many files across many directories. A determinis
 
 ## Quick start
 
+`agent-pr-reviewer-lite` is not published to npm yet, and nobody owns that name there. Until it is published by this project, do not install it from the npm registry: a package someone else registers under that name would run in your CI. Install from GitHub instead, pinned to a commit you have reviewed (the CLI is built during install):
+
 ```bash
-# Install (or add to a project)
-pnpm add -D agent-pr-reviewer-lite
+# Add to a project
+pnpm add -D github:alipajand/agent-pr-reviewer-lite#<commit-sha>
 # or globally:
-pnpm add -g agent-pr-reviewer-lite
+npm install -g github:alipajand/agent-pr-reviewer-lite#<commit-sha>
 
 # Run against main
 agent-pr-reviewer-lite --base main
