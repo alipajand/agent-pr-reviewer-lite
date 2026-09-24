@@ -7,6 +7,12 @@ export {
 } from "./git.js";
 export { compileGlob, globMatch } from "./glob.js";
 export {
+  codeownersGlobs,
+  loadCodeowners,
+  ownersFor,
+  parseCodeowners,
+} from "./codeowners.js";
+export {
   COMMENT_MARKER,
   getPrNumber,
   readEventPayload,

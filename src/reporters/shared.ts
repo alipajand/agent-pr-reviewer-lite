@@ -31,6 +31,18 @@ export function requiredReviewLabels(findings: RiskFinding[]): string[] {
   return [...labels].sort();
 }
 
+/** Owners per required-review label, merged across findings and sorted. */
+export function reviewOwners(findings: RiskFinding[]): Map<string, string[]> {
+  const byLabel = new Map<string, Set<string>>();
+  for (const f of findings) {
+    if (!f.requiredReview || !f.owners?.length) continue;
+    const set = byLabel.get(f.requiredReview) ?? new Set<string>();
+    f.owners.forEach((o) => set.add(o));
+    byLabel.set(f.requiredReview, set);
+  }
+  return new Map([...byLabel].map(([label, set]) => [label, [...set].sort()]));
+}
+
 export function explainText(finding: RiskFinding): string | null {
   return finding.explain ?? null;
 }

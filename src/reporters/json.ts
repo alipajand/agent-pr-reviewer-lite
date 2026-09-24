@@ -16,6 +16,8 @@ export function renderJson(report: ReviewReport, opts: RenderOptions): string {
       ...(f.requiredReview !== undefined && {
         requiredReview: f.requiredReview,
       }),
+      ...(f.owners !== undefined &&
+        f.owners.length > 0 && { owners: f.owners }),
     })),
     requiredHumanReview: requiredReviewLabels(unique),
     ci: {

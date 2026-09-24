@@ -11,6 +11,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- CODEOWNERS support: findings carry the owners of their file (`owners` in JSON), and the required-review list names them. `CODEOWNERS` is read from the `--base` ref, so a pull request cannot reassign its own reviewers.
 - `--config-ref <ref>`: read the config from a trusted git ref (for example `origin/main`) instead of the pull request's checkout, so a PR cannot change the settings that review it.
 - `rules` in the config: turn a rule `"off"` or set its severity. Unknown rule IDs are rejected, and `reviewer-config-changed` cannot be turned off or downgraded.
 - `--format github`: GitHub Actions workflow annotations, one per finding on the changed file, with escaping so file names cannot inject commands.
