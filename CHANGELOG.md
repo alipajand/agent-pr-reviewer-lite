@@ -19,7 +19,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - `--config-ref <ref>`: read the config from a trusted git ref (for example `origin/main`) instead of the pull request's checkout, so a PR cannot change the settings that review it.
 - `rules` in the config: turn a rule `"off"` or set its severity. Unknown rule IDs are rejected, and `reviewer-config-changed` cannot be turned off or downgraded.
 - `--format github`: GitHub Actions workflow annotations, one per finding on the changed file, with escaping so file names cannot inject commands.
-- `test-skipped` (high): added lines in test files that skip or focus tests (`it.skip`, `.only`, `xit`, `fdescribe`, `test.fixme`, `pytest.mark.skip`/`xfail`, `t.Skip`, `@Disabled`, `#[ignore]`). Conditional skips whose only condition is the platform (`process.platform`, `os.platform()`, `sys.platform`, `os.name`) are not reported.
+- `test-skipped` (high): added lines in test files that skip or focus tests (`it.skip`, `.only`, `xit`, `fdescribe`, `test.fixme`, `pytest.mark.skip`/`xfail`, `t.Skip`, `@Disabled`, `#[ignore]`). Conditional skips (`skipIf`, `runIf`, `pytest.mark.skipif`) are reported too, including ones conditioned only on the platform: `skipIf(process.platform === "linux")` never runs on Linux CI.
 - `lint-suppression-added` (medium): added lint, type-check, or coverage suppressions in non-test files.
 - `dependency-added` covers every `package.json` in the change, not only the root one.
 - `ci-workflow-changed` (high): GitHub Actions workflows and actions, GitLab CI, CircleCI, Jenkins, Azure Pipelines, Buildkite, Travis, and Drone config.
