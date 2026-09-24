@@ -1029,3 +1029,325 @@ describe("reviewer-config-changed", () => {
     ).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// CI, agent config, governance, secrets, infra, package manager, git hooks
+// ---------------------------------------------------------------------------
+
+describe.each([
+  {
+    id: "ci-workflow-changed",
+    severity: "high",
+    hits: [
+      ".github/workflows/ci.yml",
+      ".github/actions/setup/action.yml",
+      "action.yml",
+      ".gitlab-ci.yml",
+      ".circleci/config.yml",
+      "Jenkinsfile",
+      "azure-pipelines.yml",
+      ".buildkite/pipeline.yml",
+    ],
+    misses: [
+      "docs/workflows.md",
+      "src/ci/helpers.ts",
+      ".github/ISSUE_TEMPLATE/bug.md",
+    ],
+  },
+  {
+    id: "agent-permissions-changed",
+    severity: "high",
+    hits: [
+      ".claude/settings.json",
+      ".claude/settings.local.json",
+      ".mcp.json",
+      "packages/web/.mcp.json",
+      ".cursor/mcp.json",
+      ".vscode/mcp.json",
+      ".codex/config.toml",
+    ],
+    misses: [
+      ".vscode/settings.json",
+      "src/mcp.json.ts",
+      "docs/claude/settings.json",
+    ],
+  },
+  {
+    id: "agent-instructions-changed",
+    severity: "medium",
+    hits: [
+      "AGENTS.md",
+      "packages/api/CLAUDE.md",
+      "GEMINI.md",
+      ".cursorrules",
+      ".cursor/rules/api.mdc",
+      ".github/copilot-instructions.md",
+      ".github/instructions/tests.instructions.md",
+      ".claude/commands/review.md",
+      ".claude/agents/reviewer.md",
+      ".clinerules",
+      ".clinerules/01-style.md",
+      ".windsurf/rules/style.md",
+    ],
+    misses: ["docs/agents.md", "src/agents/index.ts", ".cursor/mcp.json"],
+  },
+  {
+    id: "codeowners-changed",
+    severity: "high",
+    hits: [
+      "CODEOWNERS",
+      ".github/CODEOWNERS",
+      "docs/CODEOWNERS",
+      ".github/settings.yml",
+    ],
+    misses: ["src/CODEOWNERS.ts", "packages/a/CODEOWNERS"],
+  },
+  {
+    id: "secret-material-committed",
+    severity: "high",
+    hits: [
+      "certs/server.pem",
+      "deploy/prod.key",
+      "keystore.jks",
+      ".ssh/id_ed25519",
+      "config/credentials.json",
+      "secrets.yaml",
+      "gcp-service-account.json",
+      ".netrc",
+      "infra/terraform.tfstate",
+    ],
+    misses: [
+      ".ssh/id_ed25519.pub",
+      "src/keys.ts",
+      "docs/credentials.md",
+      "api.key.ts",
+    ],
+  },
+  {
+    id: "infra-changed",
+    severity: "medium",
+    hits: [
+      "infra/main.tf",
+      "prod.tfvars",
+      "k8s/deployment.yaml",
+      "charts/app/values.yaml",
+      "Dockerfile",
+      "services/api/Dockerfile.prod",
+      "docker-compose.yml",
+      "vercel.json",
+      "fly.toml",
+    ],
+    misses: ["docs/docker.md", "src/terraform.ts"],
+  },
+  {
+    id: "package-manager-config-changed",
+    severity: "medium",
+    hits: [
+      ".npmrc",
+      ".yarnrc.yml",
+      "pnpm-workspace.yaml",
+      ".pnpmfile.cjs",
+      "bunfig.toml",
+    ],
+    misses: ["package.json", "docs/npmrc.md"],
+  },
+  {
+    id: "git-hooks-changed",
+    severity: "medium",
+    hits: [
+      ".husky/pre-commit",
+      "lefthook.yml",
+      ".pre-commit-config.yaml",
+      ".lintstagedrc.json",
+    ],
+    misses: ["src/hooks/useAuthHook.ts", "docs/git-hooks.md"],
+  },
+])("$id", ({ id, severity, hits, misses }) => {
+  it.each(hits)(`flags %s as ${severity}`, (path) => {
+    expect(hasRule([file(path)], id, severity)).toBe(true);
+  });
+
+  it.each(misses)("does not flag %s", (path) => {
+    expect(hasRule([file(path)], id)).toBe(false);
+  });
+});
+
+describe("secret-material-committed statuses", () => {
+  it("does not flag deleting key material", () => {
+    expect(
+      hasRule(
+        [file("certs/server.pem", "deleted")],
+        "secret-material-committed",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("new rules on renames", () => {
+  it("flags a CI workflow renamed out of .github/workflows", () => {
+    const renamed: ChangedFile = {
+      path: "old/ci.yml",
+      previousPath: ".github/workflows/ci.yml",
+      status: "renamed",
+    };
+    expect(hasRule([renamed], "ci-workflow-changed")).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Content inspection
+// ---------------------------------------------------------------------------
+
+describe("test-skipped", () => {
+  it.each([
+    "  it.skip('handles refunds', async () => {",
+    "  test.only('focus', () => {})",
+    "describe.skip('suite', () => {",
+    "  xit('pending', () => {})",
+    "  fdescribe('focused', () => {})",
+    "  test.fixme('later', async () => {})",
+    "@pytest.mark.skip(reason='flaky')",
+    "@pytest.mark.xfail",
+    '    t.Skip("flaky on CI")',
+    "  @Disabled",
+    "#[ignore]",
+  ])("flags an added line: %s", (line) => {
+    expect(
+      hasRule(
+        [file("tests/billing.test.ts", "modified", [line])],
+        "test-skipped",
+        "high",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not flag skips outside test files", () => {
+    expect(
+      hasRule(
+        [file("src/lib/skip.ts", "modified", ["it.skip("])],
+        "test-skipped",
+      ),
+    ).toBe(false);
+  });
+
+  it("does not flag normal test changes", () => {
+    expect(
+      hasRule(
+        [file("src/a.spec.ts", "modified", ["it('adds', () => {})"])],
+        "test-skipped",
+      ),
+    ).toBe(false);
+  });
+
+  it("includes the offending line in the reason", () => {
+    const [finding] = applyRules(
+      [file("tests/a.test.ts", "modified", ["  it.only('x', () => {})"])],
+      DEFAULT_RULES,
+    ).filter((f) => f.id === "test-skipped");
+    expect(finding.reason).toContain("it.only('x'");
+  });
+});
+
+describe("lint-suppression-added", () => {
+  it.each([
+    "// eslint-disable-next-line no-explicit-any",
+    "// @ts-ignore",
+    "// @ts-expect-error legacy",
+    "import os  # noqa: F401",
+    "x = foo()  # type: ignore",
+    "val := f() // nolint",
+    "# rubocop:disable Metrics/AbcSize",
+    '@SuppressWarnings("unchecked")',
+    "#[allow(dead_code)]",
+    "/* istanbul ignore next */",
+  ])("flags an added suppression: %s", (line) => {
+    expect(
+      hasRule(
+        [file("src/service.ts", "modified", [line])],
+        "lint-suppression-added",
+        "medium",
+      ),
+    ).toBe(true);
+  });
+
+  it("counts suppressions per file", () => {
+    const [finding] = applyRules(
+      [
+        file("src/a.ts", "modified", [
+          "// @ts-ignore",
+          "ok()",
+          "// @ts-ignore",
+        ]),
+      ],
+      DEFAULT_RULES,
+    ).filter((f) => f.id === "lint-suppression-added");
+    expect(finding.reason).toContain("adds 2 lint/type suppressions");
+  });
+
+  it("ignores suppressions in test files", () => {
+    expect(
+      hasRule(
+        [file("tests/types.test.ts", "modified", ["// @ts-expect-error"])],
+        "lint-suppression-added",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("dependency-added in nested package.json", () => {
+  it("flags dependencies added to a workspace package", () => {
+    const lines = ['  "dependencies": {', '    "left-pad": "^1.3.0"', "  }"];
+    expect(
+      hasRule(
+        [file("packages/web/package.json", "modified", lines)],
+        "dependency-added",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat files that merely end in package.json as manifests", () => {
+    const lines = ['  "dependencies": {', '    "left-pad": "^1.3.0"', "  }"];
+    expect(
+      hasRule(
+        [file("docs/my-package.json", "modified", lines)],
+        "dependency-added",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("content rules ignore text that only mentions the patterns", () => {
+  it("does not flag skip calls inside string literals in tests", () => {
+    const lines = [
+      "    \"  it.skip('handles refunds', async () => {\",",
+      "  writeFile('a.test.ts', \"it.only('x')\")",
+    ];
+    expect(
+      hasRule([file("tests/rules.test.ts", "modified", lines)], "test-skipped"),
+    ).toBe(false);
+  });
+
+  it("does not flag documentation that mentions suppressions", () => {
+    const lines = ["Avoid `eslint-disable` and `// @ts-ignore` in new code."];
+    expect(
+      hasRule([file("README.md", "modified", lines)], "lint-suppression-added"),
+    ).toBe(false);
+  });
+
+  it("does not flag suppression names without a comment marker", () => {
+    const lines = ["const PATTERNS = [/eslint-disable/, /@ts-ignore/];"];
+    expect(
+      hasRule(
+        [file("src/rules.ts", "modified", lines)],
+        "lint-suppression-added",
+      ),
+    ).toBe(false);
+  });
+
+  it("flags a trailing eslint-disable-line comment", () => {
+    const lines = ["const x: any = y; // eslint-disable-line"];
+    expect(
+      hasRule([file("src/a.ts", "modified", lines)], "lint-suppression-added"),
+    ).toBe(true);
+  });
+});

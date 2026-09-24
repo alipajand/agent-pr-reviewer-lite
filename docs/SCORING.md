@@ -63,19 +63,30 @@ export function shouldFail(overallRisk: RiskLevel, failOn: RiskLevel): boolean {
 
 ## Built-in rule severities
 
-| Rule ID                 | Severity | Rationale                                                    |
-| ----------------------- | -------- | ------------------------------------------------------------ |
-| `auth-file-touched`     | **high** | Auth bugs can lead to account takeover                       |
-| `billing-file-touched`  | **high** | Billing bugs can cause financial loss                        |
-| `security-file-touched` | **high** | RLS / CORS / CSRF changes can expose data                    |
-| `migration-changed`     | **high** | DB migrations are irreversible in production                 |
-| `test-deleted`          | **high** | Deleting tests reduces confidence in future changes          |
-| `env-var-file-changed`  | medium   | Env file changes can expose or break secrets                 |
-| `package-lock-changed`  | medium   | Lockfile changes can introduce supply chain issues           |
-| `generated-file-edited` | medium   | Manual edits to generated files drift from source of truth   |
-| `public-route-changed`  | medium   | Route changes can break SEO, redirects, or user-facing flows |
-| `pricing-copy-changed`  | medium   | Pricing copy changes affect revenue and user expectations    |
-| `dependency-added`      | medium   | New deps introduce maintenance and security surface          |
+| Rule ID                          | Severity | Rationale                                                    |
+| -------------------------------- | -------- | ------------------------------------------------------------ |
+| `auth-file-touched`              | **high** | Auth bugs can lead to account takeover                       |
+| `billing-file-touched`           | **high** | Billing bugs can cause financial loss                        |
+| `security-file-touched`          | **high** | RLS / CORS / CSRF changes can expose data                    |
+| `migration-changed`              | **high** | DB migrations are irreversible in production                 |
+| `test-deleted`                   | **high** | Deleting tests reduces confidence in future changes          |
+| `reviewer-config-changed`        | **high** | A PR could weaken its own review (`ignore`, `base`)          |
+| `ci-workflow-changed`            | **high** | Pipelines hold secrets and decide which checks run           |
+| `agent-permissions-changed`      | **high** | Controls which tools and MCP servers agents use unprompted   |
+| `codeowners-changed`             | **high** | Decides who must approve changes                             |
+| `secret-material-committed`      | **high** | Keys, credentials, or infra state must not be committed      |
+| `test-skipped`                   | **high** | Skipping or focusing tests hides failures from CI            |
+| `env-var-file-changed`           | medium   | Env file changes can expose or break secrets                 |
+| `package-lock-changed`           | medium   | Lockfile changes can introduce supply chain issues           |
+| `generated-file-edited`          | medium   | Manual edits to generated files drift from source of truth   |
+| `public-route-changed`           | medium   | Route changes can break SEO, redirects, or user-facing flows |
+| `pricing-copy-changed`           | medium   | Pricing copy changes affect revenue and user expectations    |
+| `dependency-added`               | medium   | New deps introduce maintenance and security surface          |
+| `agent-instructions-changed`     | medium   | Agents follow these files on every task                      |
+| `infra-changed`                  | medium   | Deployment and infrastructure changes affect production      |
+| `package-manager-config-changed` | medium   | Registries and overrides decide what gets installed          |
+| `git-hooks-changed`              | medium   | Hooks run on every developer machine                         |
+| `lint-suppression-added`         | medium   | Suppressions hide the errors that checks exist to catch      |
 
 ## Custom rule scoring
 

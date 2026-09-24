@@ -1,6 +1,7 @@
 import { compileGlob } from "./glob.js";
 import type {
   ChangedFile,
+  ChangeStatus,
   ExtraRiskPath,
   RiskFinding,
   RiskLevel,
@@ -63,6 +64,36 @@ function normalizeMatch(
     return match;
   }
   return finding(rule, file, match.reason, match.explain);
+}
+
+/**
+ * A rule that fires when a changed file (or, for renames, its previous path)
+ * matches one of `patterns`. `statuses` limits it to some change types.
+ */
+function pathRule(spec: {
+  id: string;
+  label: string;
+  severity: RiskLevel;
+  requiredReview: string;
+  patterns: RegExp[];
+  reason: (file: ChangedFile) => string;
+  statuses?: ChangeStatus[];
+}): Rule {
+  return {
+    id: spec.id,
+    label: spec.label,
+    severity: spec.severity,
+    requiredReview: spec.requiredReview,
+    match(file) {
+      if (spec.statuses && !spec.statuses.includes(file.status)) return null;
+      const matched = firstMatchingPattern(file.path, spec.patterns);
+      if (!matched) return null;
+      return {
+        reason: spec.reason(file),
+        explain: `Matched built-in path pattern ${matched.toString()}`,
+      };
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -164,6 +195,137 @@ const PRICING_COPY_PATHS = [
   /marketing/i,
   /landing/i,
 ];
+
+const CI_PATHS = [
+  /^\.github\/workflows\/[^/]+\.ya?ml$/,
+  /^\.github\/actions\//,
+  /(?:^|\/)action\.ya?ml$/,
+  /^\.gitlab-ci\.yml$/,
+  /^\.gitlab\/ci\//,
+  /^\.circleci\//,
+  /(?:^|\/)Jenkinsfile$/,
+  /^azure-pipelines\.ya?ml$/,
+  /^\.azure-pipelines\//,
+  /^bitbucket-pipelines\.yml$/,
+  /^\.buildkite\//,
+  /^\.travis\.yml$/,
+  /^\.drone\.ya?ml$/,
+];
+
+// Settings that change what an AI agent may do without asking.
+const AGENT_PERMISSION_PATHS = [
+  /^\.claude\/settings(?:\.local)?\.json$/,
+  /(?:^|\/)\.mcp\.json$/,
+  /^\.cursor\/mcp\.json$/,
+  /^\.vscode\/mcp\.json$/,
+  /^\.gemini\/settings\.json$/,
+  /^\.roo\/mcp\.json$/,
+  /^\.codex\/config\.toml$/,
+];
+
+// Standing instructions an AI agent reads on every task.
+const AGENT_INSTRUCTION_PATHS = [
+  /(?:^|\/)(?:AGENTS|AGENT|CLAUDE|GEMINI)\.md$/,
+  /^\.cursorrules$/,
+  /^\.cursor\/rules\//,
+  /^\.github\/copilot-instructions\.md$/,
+  /^\.github\/(?:instructions|prompts|chatmodes|agents)\//,
+  /^\.claude\/(?:CLAUDE\.md$|commands\/|agents\/|skills\/)/,
+  /^\.windsurfrules$/,
+  /^\.windsurf\/rules\//,
+  /^\.clinerules(?:\/|$)/,
+  /^\.roo\/rules/,
+  /^\.kiro\/steering\//,
+  /^\.junie\/guidelines\.md$/,
+  /^\.goosehints$/,
+  /^\.continue\/rules\//,
+];
+
+const CODEOWNERS_PATHS = [
+  /^(?:\.github\/|docs\/)?CODEOWNERS$/,
+  /^\.github\/settings\.ya?ml$/,
+];
+
+const SECRET_MATERIAL_PATHS = [
+  /\.(?:pem|key|p12|pfx|jks|keystore|ppk)$/i,
+  /(?:^|\/)id_(?:rsa|dsa|ecdsa|ed25519)$/,
+  /(?:^|\/)\.?(?:credentials|secrets)(?:\.[\w-]+)?\.(?:json|ya?ml|toml|ini)$/i,
+  /(?:^|\/)[\w.-]*service[-_]?account[\w.-]*\.json$/i,
+  /(?:^|\/)\.(?:netrc|pgpass|htpasswd)$/,
+  /\.tfstate(?:\.backup)?$/,
+];
+
+const INFRA_PATHS = [
+  /\.tf$/,
+  /\.tfvars$/,
+  /(?:^|\/)(?:terraform|k8s|kubernetes|helm|charts|kustomize)\//,
+  /(?:^|\/)Dockerfile(?:\.[\w-]+)?$/,
+  /(?:^|\/)(?:docker-)?compose[\w.-]*\.ya?ml$/,
+  /(?:^|\/)(?:serverless\.ya?ml|vercel\.json|netlify\.toml|fly\.toml|render\.ya?ml|railway\.(?:json|toml)|Procfile|cloudbuild\.ya?ml|firebase\.json|wrangler\.toml|cdk\.json)$/,
+  /(?:^|\/)Pulumi(?:\.[\w-]+)?\.ya?ml$/,
+];
+
+const PACKAGE_MANAGER_CONFIG_PATHS = [
+  /(?:^|\/)\.npmrc$/,
+  /(?:^|\/)\.yarnrc(?:\.yml)?$/,
+  /(?:^|\/)\.pnpmfile\.cjs$/,
+  /(?:^|\/)pnpm-workspace\.yaml$/,
+  /(?:^|\/)bunfig\.toml$/,
+  /(?:^|\/)(?:pip\.conf|\.pypirc)$/,
+];
+
+const GIT_HOOK_PATHS = [
+  /^\.husky\//,
+  /(?:^|\/)lefthook(?:-local)?\.ya?ml$/,
+  /(?:^|\/)\.pre-commit-config\.ya?ml$/,
+  /^\.git-?hooks\//,
+  /(?:^|\/)\.lintstagedrc/,
+  /(?:^|\/)lint-staged\.config\./,
+];
+
+// Added lines that skip or focus tests. `.only` counts too: it silently skips
+// every other test in the file for most runners. Each pattern must start the
+// statement, so test data such as "it.skip('x')" inside a string is ignored.
+const TEST_SKIP_PATTERNS = [
+  /^\s*(?:it|test|describe|context|suite|bench)\.(?:skip|only|todo|skipIf|runIf)\b/,
+  /^\s*(?:xit|xtest|xdescribe|xcontext|fit|fdescribe|fcontext)\s*\(/,
+  /^\s*test\.fixme\s*\(/,
+  /^\s*@pytest\.mark\.(?:skip|skipif|xfail)\b/,
+  /^\s*pytest\.skip\s*\(/,
+  /^\s*@unittest\.skip/,
+  /^\s*self\.skipTest\s*\(/,
+  /^\s*t\.Skip(?:f|Now)?\s*\(/,
+  /^\s*@(?:Disabled|Ignore)\b/,
+  /^\s*#\[ignore\]/,
+];
+
+// Suppressions in source files. Comment-based ones need the comment marker,
+// so documentation or code that merely mentions them does not match.
+const SUPPRESSION_PATTERNS = [
+  /(?:\/\/|\/\*)\s*eslint-disable/,
+  /(?:\/\/|\/\*)\s*@ts-(?:ignore|nocheck|expect-error)\b/,
+  /(?:\/\/|\/\*)\s*biome-ignore/,
+  /(?:\/\/|\/\*)\s*(?:istanbul|c8|v8)\s+ignore/,
+  /\/\/\s*nolint\b/,
+  /#\s*noqa\b/,
+  /#\s*type:\s*ignore\b/,
+  /#\s*pylint:\s*disable/,
+  /#\s*rubocop:disable/,
+  /^\s*@SuppressWarnings\b/,
+  /^\s*#\[allow\(/,
+];
+
+const SOURCE_FILE =
+  /\.(?:[cm]?[jt]sx?|vue|svelte|astro|py|go|rb|java|kt|kts|scala|rs|swift|php|cs|c|cc|cpp|h|hpp)$/;
+
+function firstMatchingLine(lines: string[], patterns: RegExp[]): string | null {
+  return lines.find((line) => patterns.some((p) => p.test(line))) ?? null;
+}
+
+function excerpt(line: string): string {
+  const trimmed = line.trim().replace(/\s+/g, " ");
+  return trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
+}
 
 // ---------------------------------------------------------------------------
 // Dependency-added parser (content inspection)
@@ -338,7 +500,87 @@ export const DEFAULT_RULES: Rule[] = [
     },
   },
 
+  pathRule({
+    id: "ci-workflow-changed",
+    label: "CI/CD pipeline changed",
+    severity: "high",
+    requiredReview: "CI/CD pipeline",
+    patterns: CI_PATHS,
+    reason: (file) =>
+      `CI/CD file '${file.path}' was ${file.status} — pipeline changes can expose secrets or skip required checks`,
+  }),
+
+  pathRule({
+    id: "agent-permissions-changed",
+    label: "AI agent permissions or tools changed",
+    severity: "high",
+    requiredReview: "agent permissions",
+    patterns: AGENT_PERMISSION_PATHS,
+    reason: (file) =>
+      `Agent configuration '${file.path}' was ${file.status} — it controls which tools and MCP servers agents may use without asking`,
+  }),
+
+  pathRule({
+    id: "codeowners-changed",
+    label: "Code ownership or repository settings changed",
+    severity: "high",
+    requiredReview: "code ownership",
+    patterns: CODEOWNERS_PATHS,
+    reason: (file) =>
+      `'${file.path}' was ${file.status} — it decides who must approve changes`,
+  }),
+
+  pathRule({
+    id: "secret-material-committed",
+    label: "Key or credential file committed",
+    severity: "high",
+    requiredReview: "secrets",
+    patterns: SECRET_MATERIAL_PATHS,
+    statuses: ["added", "modified", "renamed"],
+    reason: (file) =>
+      `'${file.path}' looks like key material, credentials, or infrastructure state — keep it out of the repository`,
+  }),
+
   // --- MEDIUM severity ---
+
+  pathRule({
+    id: "agent-instructions-changed",
+    label: "AI agent instructions changed",
+    severity: "medium",
+    requiredReview: "agent instructions",
+    patterns: AGENT_INSTRUCTION_PATHS,
+    reason: (file) =>
+      `Agent instruction file '${file.path}' was ${file.status} — agents follow it on every task`,
+  }),
+
+  pathRule({
+    id: "infra-changed",
+    label: "Infrastructure or deployment config changed",
+    severity: "medium",
+    requiredReview: "infrastructure",
+    patterns: INFRA_PATHS,
+    reason: (file) => `Infrastructure file '${file.path}' was ${file.status}`,
+  }),
+
+  pathRule({
+    id: "package-manager-config-changed",
+    label: "Package manager configuration changed",
+    severity: "medium",
+    requiredReview: "dependency changes",
+    patterns: PACKAGE_MANAGER_CONFIG_PATHS,
+    reason: (file) =>
+      `'${file.path}' was ${file.status} — registries, overrides, and install-script settings decide what code gets installed`,
+  }),
+
+  pathRule({
+    id: "git-hooks-changed",
+    label: "Git hooks changed",
+    severity: "medium",
+    requiredReview: "git hooks",
+    patterns: GIT_HOOK_PATHS,
+    reason: (file) =>
+      `Git hook config '${file.path}' was ${file.status} — hooks run on every developer machine`,
+  }),
 
   {
     id: "env-var-file-changed",
@@ -425,6 +667,46 @@ export const DEFAULT_RULES: Rule[] = [
     },
   },
 
+  // --- Content inspection (added lines) ---
+
+  {
+    id: "test-skipped",
+    label: "Tests skipped or focused",
+    severity: "high",
+    requiredReview: "skipped tests",
+    match(file) {
+      if (!file.addedLines || !matchesAny(file.path, TEST_PATHS)) return null;
+      const line = firstMatchingLine(file.addedLines, TEST_SKIP_PATTERNS);
+      if (!line) return null;
+      return {
+        reason: `Test file '${file.path}' adds a skipped or focused test: ${excerpt(line)}`,
+        explain:
+          "Matched an added line against built-in test skip/focus patterns",
+      };
+    },
+  },
+
+  {
+    id: "lint-suppression-added",
+    label: "Lint or type check suppressed",
+    severity: "medium",
+    requiredReview: "lint/type suppressions",
+    match(file) {
+      if (!file.addedLines || !SOURCE_FILE.test(file.path)) return null;
+      if (matchesAny(file.path, TEST_PATHS)) return null;
+      const count = file.addedLines.filter((line) =>
+        SUPPRESSION_PATTERNS.some((p) => p.test(line)),
+      ).length;
+      if (count === 0) return null;
+      const first =
+        firstMatchingLine(file.addedLines, SUPPRESSION_PATTERNS) ?? "";
+      return {
+        reason: `'${file.path}' adds ${count} lint/type suppression${count === 1 ? "" : "s"}: ${excerpt(first)}`,
+        explain: "Matched added lines against built-in suppression patterns",
+      };
+    },
+  },
+
   // --- MEDIUM severity with content inspection ---
 
   {
@@ -433,7 +715,12 @@ export const DEFAULT_RULES: Rule[] = [
     severity: "medium",
     requiredReview: "dependency changes",
     match(file) {
-      if (file.path !== "package.json") return null;
+      if (
+        file.path !== "package.json" &&
+        !file.path.endsWith("/package.json")
+      ) {
+        return null;
+      }
       if (!file.addedLines || file.addedLines.length === 0) return null;
 
       const added = extractAddedDependencies(file.addedLines);
