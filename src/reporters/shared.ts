@@ -123,14 +123,16 @@ export function markdownCodeCell(value: string): string {
   const fence = "`".repeat(longestRun + 1);
   const pad = text.startsWith("`") || text.endsWith("`") ? " " : "";
   // GFM splits rows on `|` even inside code spans unless it is escaped, and
-  // a backslash run before the pipe would cancel that escape, so each run is
-  // doubled first. Only pipes are unescaped inside the span, so backslashes
-  // elsewhere still display as written.
-  return `${fence}${pad}${text}${pad}${fence}`
-    .replace(/\\+/g, (run: string, offset: number, all: string) =>
-      all[offset + run.length] === "|" ? run + run : run,
-    )
-    .replace(/\|/g, "\\|");
+  // a backslash run before the pipe would cancel that escape, so such runs are
+  // doubled. Only pipes are unescaped inside the span, so other backslashes
+  // still display as written.
+  return `${fence}${pad}${text}${pad}${fence}`.replace(
+    /\\+|\|/g,
+    (match: string, offset: number, all: string) => {
+      if (match === "|") return "\\|";
+      return all[offset + match.length] === "|" ? match + match : match;
+    },
+  );
 }
 
 const DEPENDENCY_PREFIX = "Added dependency: ";
