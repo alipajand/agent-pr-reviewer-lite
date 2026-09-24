@@ -1236,20 +1236,13 @@ describe("test-skipped", () => {
   });
 
   it.each([
-    '  it.skipIf(process.platform === "win32")("needs mkfifo", () => {',
-    "  describe.runIf(os.platform() !== 'win32')('posix only', () => {",
-    '@pytest.mark.skipif(sys.platform == "win32", reason="posix only")',
-  ])("does not flag a platform-only skip: %s", (line) => {
-    expect(
-      hasRule([file("tests/fifo.test.ts", "modified", [line])], "test-skipped"),
-    ).toBe(false);
-  });
-
-  it.each([
     "  it.skipIf(true)('flaky', () => {",
     "  it.skipIf(process.env.CI)('flaky on CI', () => {",
-    '  it.skipIf(process.platform === "linux" || flaky)("x", () => {',
-  ])("still flags other conditional skips: %s", (line) => {
+    '  it.skipIf(process.platform === "linux")("hidden on Linux CI", () => {',
+    '  it.skipIf(process.platform === "win32")("needs mkfifo", () => {',
+    "  describe.runIf(os.platform() !== 'win32')('posix only', () => {",
+    '@pytest.mark.skipif(sys.platform == "linux", reason="flaky")',
+  ])("flags conditional skips, including platform-only ones: %s", (line) => {
     expect(
       hasRule(
         [file("tests/a.test.ts", "modified", [line])],

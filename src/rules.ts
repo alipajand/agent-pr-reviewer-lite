@@ -369,14 +369,6 @@ const TEST_SKIP_PATTERNS = [
   /^\s*#\[ignore\]/,
 ];
 
-// Conditional skips whose only condition is the operating system, such as a
-// test that needs mkfifo. They keep a test from running where it cannot, not
-// from failing where it can, so they are not reported.
-const PLATFORM_ONLY_SKIP = [
-  /^\s*(?:it|test|describe|context|suite|bench)\.(?:skipIf|runIf)\(\s*(?:process\.platform|os\.platform\(\))\s*[!=]==?\s*["'][\w-]+["']\s*\)/,
-  /^\s*@pytest\.mark\.skipif\(\s*(?:sys\.platform|os\.name)\s*[!=]=\s*["'][\w-]+["']\s*[,)]/,
-];
-
 // Suppressions in source files. Comment-based ones need the comment marker,
 // so documentation or code that merely mentions them does not match.
 const SUPPRESSION_PATTERNS = [
@@ -799,11 +791,9 @@ export const DEFAULT_RULES: Rule[] = [
     requiredReview: "skipped tests",
     match(file) {
       if (!file.addedLines || !matchesAny(file.path, TEST_PATHS)) return null;
-      const line = file.addedLines.find(
-        (added) =>
-          TEST_SKIP_PATTERNS.some((p) => p.test(added)) &&
-          !PLATFORM_ONLY_SKIP.some((p) => p.test(added)),
-      );
+      // Conditional skips are reported even when the condition is only the
+      // platform: skipIf(process.platform === "linux") never runs on Linux CI.
+      const line = firstMatchingLine(file.addedLines, TEST_SKIP_PATTERNS);
       if (!line) return null;
       return {
         reason: `Test file '${file.path}' adds a skipped or focused test: ${excerpt(line)}`,
