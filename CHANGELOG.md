@@ -11,6 +11,9 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `test-skipped` (high): added lines in test files that skip or focus tests (`it.skip`, `.only`, `xit`, `fdescribe`, `test.fixme`, `pytest.mark.skip`/`xfail`, `t.Skip`, `@Disabled`, `#[ignore]`).
+- `lint-suppression-added` (medium): added lint, type-check, or coverage suppressions in non-test files.
+- `dependency-added` covers every `package.json` in the change, not only the root one.
 - `ci-workflow-changed` (high): GitHub Actions workflows and actions, GitLab CI, CircleCI, Jenkins, Azure Pipelines, Buildkite, Travis, and Drone config.
 - `agent-permissions-changed` (high): Claude Code settings, MCP server configs, and Codex config — they decide which tools agents use without asking.
 - `agent-instructions-changed` (medium): AGENTS.md/CLAUDE.md/GEMINI.md at any depth and tool-specific rule files (Cursor, Copilot, Claude commands/agents/skills, Windsurf, Cline, Roo, Kiro, Junie, Goose, Continue).
@@ -22,6 +25,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Added lines come from a single `git diff -U0` for the whole change instead of one call per inspected file. Header paths are unquoted and prefixes forced, so `core.quotePath` and `diff.noprefix` settings do not affect it. `ChangedFile.addedLines` is now set for every non-deleted text file.
 - Renamed files are evaluated against both their new and previous paths. An `ignore` pattern hides a rename only when it matches both.
 - Markdown output renders dependency names as inline code.
 - Dependabot groups minor/patch updates and also updates GitHub Actions; CI runs on Node 22 and 24 with SHA-pinned actions and a read-only token.

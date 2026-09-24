@@ -1193,3 +1193,161 @@ describe("new rules on renames", () => {
     expect(hasRule([renamed], "ci-workflow-changed")).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Content inspection
+// ---------------------------------------------------------------------------
+
+describe("test-skipped", () => {
+  it.each([
+    "  it.skip('handles refunds', async () => {",
+    "  test.only('focus', () => {})",
+    "describe.skip('suite', () => {",
+    "  xit('pending', () => {})",
+    "  fdescribe('focused', () => {})",
+    "  test.fixme('later', async () => {})",
+    "@pytest.mark.skip(reason='flaky')",
+    "@pytest.mark.xfail",
+    '    t.Skip("flaky on CI")',
+    "  @Disabled",
+    "#[ignore]",
+  ])("flags an added line: %s", (line) => {
+    expect(
+      hasRule(
+        [file("tests/billing.test.ts", "modified", [line])],
+        "test-skipped",
+        "high",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not flag skips outside test files", () => {
+    expect(
+      hasRule(
+        [file("src/lib/skip.ts", "modified", ["it.skip("])],
+        "test-skipped",
+      ),
+    ).toBe(false);
+  });
+
+  it("does not flag normal test changes", () => {
+    expect(
+      hasRule(
+        [file("src/a.spec.ts", "modified", ["it('adds', () => {})"])],
+        "test-skipped",
+      ),
+    ).toBe(false);
+  });
+
+  it("includes the offending line in the reason", () => {
+    const [finding] = applyRules(
+      [file("tests/a.test.ts", "modified", ["  it.only('x', () => {})"])],
+      DEFAULT_RULES,
+    ).filter((f) => f.id === "test-skipped");
+    expect(finding.reason).toContain("it.only('x'");
+  });
+});
+
+describe("lint-suppression-added", () => {
+  it.each([
+    "// eslint-disable-next-line no-explicit-any",
+    "// @ts-ignore",
+    "// @ts-expect-error legacy",
+    "import os  # noqa: F401",
+    "x = foo()  # type: ignore",
+    "val := f() // nolint",
+    "# rubocop:disable Metrics/AbcSize",
+    '@SuppressWarnings("unchecked")',
+    "#[allow(dead_code)]",
+    "/* istanbul ignore next */",
+  ])("flags an added suppression: %s", (line) => {
+    expect(
+      hasRule(
+        [file("src/service.ts", "modified", [line])],
+        "lint-suppression-added",
+        "medium",
+      ),
+    ).toBe(true);
+  });
+
+  it("counts suppressions per file", () => {
+    const [finding] = applyRules(
+      [
+        file("src/a.ts", "modified", [
+          "// @ts-ignore",
+          "ok()",
+          "// @ts-ignore",
+        ]),
+      ],
+      DEFAULT_RULES,
+    ).filter((f) => f.id === "lint-suppression-added");
+    expect(finding.reason).toContain("adds 2 lint/type suppressions");
+  });
+
+  it("ignores suppressions in test files", () => {
+    expect(
+      hasRule(
+        [file("tests/types.test.ts", "modified", ["// @ts-expect-error"])],
+        "lint-suppression-added",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("dependency-added in nested package.json", () => {
+  it("flags dependencies added to a workspace package", () => {
+    const lines = ['  "dependencies": {', '    "left-pad": "^1.3.0"', "  }"];
+    expect(
+      hasRule(
+        [file("packages/web/package.json", "modified", lines)],
+        "dependency-added",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not treat files that merely end in package.json as manifests", () => {
+    const lines = ['  "dependencies": {', '    "left-pad": "^1.3.0"', "  }"];
+    expect(
+      hasRule(
+        [file("docs/my-package.json", "modified", lines)],
+        "dependency-added",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("content rules ignore text that only mentions the patterns", () => {
+  it("does not flag skip calls inside string literals in tests", () => {
+    const lines = [
+      "    \"  it.skip('handles refunds', async () => {\",",
+      "  writeFile('a.test.ts', \"it.only('x')\")",
+    ];
+    expect(
+      hasRule([file("tests/rules.test.ts", "modified", lines)], "test-skipped"),
+    ).toBe(false);
+  });
+
+  it("does not flag documentation that mentions suppressions", () => {
+    const lines = ["Avoid `eslint-disable` and `// @ts-ignore` in new code."];
+    expect(
+      hasRule([file("README.md", "modified", lines)], "lint-suppression-added"),
+    ).toBe(false);
+  });
+
+  it("does not flag suppression names without a comment marker", () => {
+    const lines = ["const PATTERNS = [/eslint-disable/, /@ts-ignore/];"];
+    expect(
+      hasRule(
+        [file("src/rules.ts", "modified", lines)],
+        "lint-suppression-added",
+      ),
+    ).toBe(false);
+  });
+
+  it("flags a trailing eslint-disable-line comment", () => {
+    const lines = ["const x: any = y; // eslint-disable-line"];
+    expect(
+      hasRule([file("src/a.ts", "modified", lines)], "lint-suppression-added"),
+    ).toBe(true);
+  });
+});

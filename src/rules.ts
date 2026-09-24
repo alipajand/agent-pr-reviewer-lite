@@ -283,6 +283,50 @@ const GIT_HOOK_PATHS = [
   /(?:^|\/)lint-staged\.config\./,
 ];
 
+// Added lines that skip or focus tests. `.only` counts too: it silently skips
+// every other test in the file for most runners. Each pattern must start the
+// statement, so test data such as "it.skip('x')" inside a string is ignored.
+const TEST_SKIP_PATTERNS = [
+  /^\s*(?:it|test|describe|context|suite|bench)\.(?:skip|only|todo|skipIf|runIf)\b/,
+  /^\s*(?:xit|xtest|xdescribe|xcontext|fit|fdescribe|fcontext)\s*\(/,
+  /^\s*test\.fixme\s*\(/,
+  /^\s*@pytest\.mark\.(?:skip|skipif|xfail)\b/,
+  /^\s*pytest\.skip\s*\(/,
+  /^\s*@unittest\.skip/,
+  /^\s*self\.skipTest\s*\(/,
+  /^\s*t\.Skip(?:f|Now)?\s*\(/,
+  /^\s*@(?:Disabled|Ignore)\b/,
+  /^\s*#\[ignore\]/,
+];
+
+// Suppressions in source files. Comment-based ones need the comment marker,
+// so documentation or code that merely mentions them does not match.
+const SUPPRESSION_PATTERNS = [
+  /(?:\/\/|\/\*)\s*eslint-disable/,
+  /(?:\/\/|\/\*)\s*@ts-(?:ignore|nocheck|expect-error)\b/,
+  /(?:\/\/|\/\*)\s*biome-ignore/,
+  /(?:\/\/|\/\*)\s*(?:istanbul|c8|v8)\s+ignore/,
+  /\/\/\s*nolint\b/,
+  /#\s*noqa\b/,
+  /#\s*type:\s*ignore\b/,
+  /#\s*pylint:\s*disable/,
+  /#\s*rubocop:disable/,
+  /^\s*@SuppressWarnings\b/,
+  /^\s*#\[allow\(/,
+];
+
+const SOURCE_FILE =
+  /\.(?:[cm]?[jt]sx?|vue|svelte|astro|py|go|rb|java|kt|kts|scala|rs|swift|php|cs|c|cc|cpp|h|hpp)$/;
+
+function firstMatchingLine(lines: string[], patterns: RegExp[]): string | null {
+  return lines.find((line) => patterns.some((p) => p.test(line))) ?? null;
+}
+
+function excerpt(line: string): string {
+  const trimmed = line.trim().replace(/\s+/g, " ");
+  return trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
+}
+
 // ---------------------------------------------------------------------------
 // Dependency-added parser (content inspection)
 // ---------------------------------------------------------------------------
@@ -623,6 +667,46 @@ export const DEFAULT_RULES: Rule[] = [
     },
   },
 
+  // --- Content inspection (added lines) ---
+
+  {
+    id: "test-skipped",
+    label: "Tests skipped or focused",
+    severity: "high",
+    requiredReview: "skipped tests",
+    match(file) {
+      if (!file.addedLines || !matchesAny(file.path, TEST_PATHS)) return null;
+      const line = firstMatchingLine(file.addedLines, TEST_SKIP_PATTERNS);
+      if (!line) return null;
+      return {
+        reason: `Test file '${file.path}' adds a skipped or focused test: ${excerpt(line)}`,
+        explain:
+          "Matched an added line against built-in test skip/focus patterns",
+      };
+    },
+  },
+
+  {
+    id: "lint-suppression-added",
+    label: "Lint or type check suppressed",
+    severity: "medium",
+    requiredReview: "lint/type suppressions",
+    match(file) {
+      if (!file.addedLines || !SOURCE_FILE.test(file.path)) return null;
+      if (matchesAny(file.path, TEST_PATHS)) return null;
+      const count = file.addedLines.filter((line) =>
+        SUPPRESSION_PATTERNS.some((p) => p.test(line)),
+      ).length;
+      if (count === 0) return null;
+      const first =
+        firstMatchingLine(file.addedLines, SUPPRESSION_PATTERNS) ?? "";
+      return {
+        reason: `'${file.path}' adds ${count} lint/type suppression${count === 1 ? "" : "s"}: ${excerpt(first)}`,
+        explain: "Matched added lines against built-in suppression patterns",
+      };
+    },
+  },
+
   // --- MEDIUM severity with content inspection ---
 
   {
@@ -631,7 +715,12 @@ export const DEFAULT_RULES: Rule[] = [
     severity: "medium",
     requiredReview: "dependency changes",
     match(file) {
-      if (file.path !== "package.json") return null;
+      if (
+        file.path !== "package.json" &&
+        !file.path.endsWith("/package.json")
+      ) {
+        return null;
+      }
       if (!file.addedLines || file.addedLines.length === 0) return null;
 
       const added = extractAddedDependencies(file.addedLines);

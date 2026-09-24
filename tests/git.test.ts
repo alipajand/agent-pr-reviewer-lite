@@ -18,8 +18,10 @@ import { join } from "node:path";
 import {
   getChangedFiles,
   getChangedFilesFromInput,
+  parseAddedLines,
   parseChangedFilesInput,
   parseNameStatusZ,
+  unquoteGitPath,
 } from "../src/git.js";
 import { existsSync } from "node:fs";
 
@@ -241,7 +243,7 @@ describe("getChangedFiles — package.json content inspection", () => {
     expect(pkg?.addedLines).toBeUndefined();
   });
 
-  it("does NOT populate addedLines for non-package.json files", () => {
+  it("populates addedLines for every changed text file", () => {
     const repo = setup();
     writeAndCommit(
       repo,
@@ -251,7 +253,7 @@ describe("getChangedFiles — package.json content inspection", () => {
 
     const files = getChangedFiles("HEAD~1", "HEAD");
     const cfg = files.find((f) => f.path === "src/config.ts");
-    expect(cfg?.addedLines).toBeUndefined();
+    expect(cfg?.addedLines).toEqual(["export const a = 1;"]);
   });
 });
 
@@ -399,5 +401,80 @@ describe("parseNameStatusZ", () => {
 
   it("returns an empty list for empty output", () => {
     expect(parseNameStatusZ("")).toEqual([]);
+  });
+});
+
+describe("unquoteGitPath", () => {
+  it("returns unquoted paths unchanged", () => {
+    expect(unquoteGitPath("b/src/a.ts")).toBe("b/src/a.ts");
+  });
+
+  it("decodes octal UTF-8 escapes and C escapes", () => {
+    expect(unquoteGitPath('"b/sup\\303\\274.sql"')).toBe("b/sup\u00fc.sql");
+    expect(unquoteGitPath('"b/a\\tb\\"c\\\\d"')).toBe('b/a\tb"c\\d');
+  });
+
+  it("keeps raw non-ASCII characters inside quotes", () => {
+    const emoji = String.fromCodePoint(0x1f680);
+    expect(unquoteGitPath(`"b/a ${emoji}\\".md"`)).toBe(`b/a ${emoji}".md`);
+  });
+});
+
+describe("parseAddedLines", () => {
+  it("maps added lines to files and skips deletions", () => {
+    const diff = [
+      "diff --git a/src/a.ts b/src/a.ts",
+      "--- a/src/a.ts",
+      "+++ b/src/a.ts",
+      "@@ -1,0 +2,2 @@",
+      "+const x = 1;",
+      "+++counter;",
+      "diff --git a/old.ts b/old.ts",
+      "--- a/old.ts",
+      "+++ /dev/null",
+      "@@ -1 +0,0 @@",
+      "-gone",
+    ].join("\n");
+    const map = parseAddedLines(diff);
+    expect(map.get("src/a.ts")).toEqual(["const x = 1;", "++counter;"]);
+    expect(map.has("old.ts")).toBe(false);
+  });
+
+  it("reads quoted header paths", () => {
+    const diff = [
+      '+++ "b/sup\\303\\274.sql"',
+      "@@ -0,0 +1 @@",
+      "+drop table x;",
+    ].join("\n");
+    expect(parseAddedLines(diff).get("sup\u00fc.sql")).toEqual([
+      "drop table x;",
+    ]);
+  });
+});
+
+describe("getChangedFiles — content for rules", () => {
+  it("captures added lines for a test file with a skipped test", () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      { "tests/a.test.ts": "it('works', () => {});\n" },
+      "add test",
+    );
+    writeAndCommit(
+      repo,
+      { "tests/a.test.ts": "it.skip('works', () => {});\n" },
+      "skip test",
+    );
+    const files = getChangedFiles("HEAD~1", "HEAD");
+    expect(files[0]?.addedLines).toEqual(["it.skip('works', () => {});"]);
+  });
+
+  it("ignores diff.noprefix in the repository config", () => {
+    const repo = setup();
+    git(["config", "diff.noprefix", "true"], repo);
+    writeAndCommit(repo, { "src/x.ts": "export const x = 1;\n" }, "add");
+    expect(getChangedFiles("HEAD~1", "HEAD")[0]?.addedLines).toEqual([
+      "export const x = 1;",
+    ]);
   });
 });

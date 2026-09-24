@@ -75,6 +75,7 @@ export function shouldFail(overallRisk: RiskLevel, failOn: RiskLevel): boolean {
 | `agent-permissions-changed`      | **high** | Controls which tools and MCP servers agents use unprompted   |
 | `codeowners-changed`             | **high** | Decides who must approve changes                             |
 | `secret-material-committed`      | **high** | Keys, credentials, or infra state must not be committed      |
+| `test-skipped`                   | **high** | Skipping or focusing tests hides failures from CI            |
 | `env-var-file-changed`           | medium   | Env file changes can expose or break secrets                 |
 | `package-lock-changed`           | medium   | Lockfile changes can introduce supply chain issues           |
 | `generated-file-edited`          | medium   | Manual edits to generated files drift from source of truth   |
@@ -85,6 +86,7 @@ export function shouldFail(overallRisk: RiskLevel, failOn: RiskLevel): boolean {
 | `infra-changed`                  | medium   | Deployment and infrastructure changes affect production      |
 | `package-manager-config-changed` | medium   | Registries and overrides decide what gets installed          |
 | `git-hooks-changed`              | medium   | Hooks run on every developer machine                         |
+| `lint-suppression-added`         | medium   | Suppressions hide the errors that checks exist to catch      |
 
 ## Custom rule scoring
 
