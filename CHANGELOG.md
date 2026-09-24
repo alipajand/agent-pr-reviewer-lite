@@ -11,6 +11,10 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `agent-local-settings-committed` (high): `.claude/settings.local.json` or `CLAUDE.local.md` added or modified. These personal files override the shared settings and instructions, so committing them applies one person's permissions to everyone.
+- `agent-auto-run-added` (high): added lines in Claude commands or skills that run shell on invocation (`` !`cmd` ``, ` ```! `) or whose `allowed-tools` approve any `Bash`, and subagents set to `permissionMode: bypassPermissions`.
+- `agent-permissions-changed` covers `.claude/hooks/**`, and its reason names risky keys the change adds (`bypassPermissions`, unrestricted `Bash`, hooks, status line, credential helpers, endpoint or proxy overrides, `enableAllProjectMcpServers`, `additionalDirectories`, `curl | sh`).
+- `agent-instructions-changed` covers `.claude/rules/` and `.claude/output-styles/`.
 - CODEOWNERS support: findings carry the owners of their file (`owners` in JSON), and the required-review list names them. `CODEOWNERS` is read from the `--base` ref, so a pull request cannot reassign its own reviewers.
 - `--config-ref <ref>`: read the config from a trusted git ref (for example `origin/main`) instead of the pull request's checkout, so a PR cannot change the settings that review it.
 - `rules` in the config: turn a rule `"off"` or set its severity. Unknown rule IDs are rejected, and `reviewer-config-changed` cannot be turned off or downgraded.
