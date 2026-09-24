@@ -289,3 +289,40 @@ export function getChangedFiles(base: string, head: string): ChangedFile[] {
 
   return files;
 }
+
+/**
+ * Contents of `filePath` (relative to the working directory) at git `ref`, or
+ * null when the file does not exist there. Used to read review config from a
+ * trusted ref such as origin/main instead of the pull request's checkout.
+ */
+export function readFileAtRef(
+  ref: string,
+  filePath: string,
+  maxBytes: number,
+): string | null {
+  assertSafeRef(ref, "--config-ref");
+  const rel = filePath.replace(/\\/g, "/").replace(/^\.\//, "");
+  try {
+    return execFileSync(
+      "git",
+      ["show", "--no-textconv", "--end-of-options", `${ref}:./${rel}`],
+      {
+        encoding: "utf8",
+        maxBuffer: maxBytes,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+  } catch (err) {
+    const stderr = String((err as { stderr?: unknown }).stderr ?? "");
+    if (
+      /does not exist in|exists on disk, but not in|path '.*' does not exist/i.test(
+        stderr,
+      )
+    ) {
+      return null;
+    }
+    const message =
+      stderr.trim() || (err instanceof Error ? err.message : String(err));
+    throw new Error(`Failed to read ${rel} at ${ref}: ${message}`);
+  }
+}

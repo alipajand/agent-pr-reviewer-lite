@@ -6,6 +6,7 @@ import type {
   RiskFinding,
   RiskLevel,
   PresetName,
+  RuleSetting,
 } from "./types.js";
 
 export type RuleMatchDetail = {
@@ -907,4 +908,40 @@ export function buildPresetRules(presets: PresetName[]): Rule[] {
     (preset) => BUILTIN_PRESETS[preset] ?? [],
   );
   return buildExtraRules(extraRiskPaths);
+}
+
+/** Rules whose settings cannot be changed by config: they protect the review itself. */
+const PROTECTED_RULE_IDS = new Set(["reviewer-config-changed"]);
+
+/**
+ * Apply `config.rules`: drop rules set to "off" and change the severity of the
+ * rest. Unknown rule IDs are rejected so typos do not silently do nothing, and
+ * `reviewer-config-changed` cannot be turned off or downgraded.
+ */
+export function applyRuleSettings(
+  rules: Rule[],
+  settings: Record<string, RuleSetting> | undefined,
+): Rule[] {
+  if (!settings) return rules;
+
+  const known = new Set(rules.map((r) => r.id));
+  for (const id of Object.keys(settings)) {
+    if (!known.has(id)) {
+      throw new Error(`config.rules: unknown rule "${id}"`);
+    }
+    if (PROTECTED_RULE_IDS.has(id) && settings[id] !== "high") {
+      throw new Error(
+        `config.rules: "${id}" cannot be turned off or downgraded`,
+      );
+    }
+  }
+
+  return rules
+    .filter((rule) => settings[rule.id] !== "off")
+    .map((rule) => {
+      const setting = settings[rule.id];
+      return setting && setting !== "off" && setting !== rule.severity
+        ? { ...rule, severity: setting }
+        : rule;
+    });
 }

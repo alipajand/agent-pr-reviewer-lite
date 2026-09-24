@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { pathToFileURL } from "node:url";
 import { realpathSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
-import { loadConfig, isIgnored } from "./config.js";
+import { loadConfig, loadConfigFromRef, isIgnored } from "./config.js";
 import { getChangedFiles, getChangedFilesFromInput } from "./git.js";
 import { tryPostGitHubComment } from "./github.js";
 import { buildReport, shouldFail } from "./risk.js";
@@ -11,6 +11,7 @@ import {
   BUILTIN_PRESET_NAMES,
   DEFAULT_RULES,
   REVIEWER_CONFIG_PATH,
+  applyRuleSettings,
   buildExtraRules,
   buildPresetRules,
 } from "./rules.js";
@@ -19,6 +20,7 @@ import { renderJson } from "./reporters/json.js";
 import { renderMarkdown } from "./reporters/markdown.js";
 import { renderSarif } from "./reporters/sarif.js";
 import { renderJunit } from "./reporters/junit.js";
+import { renderGithub } from "./reporters/github.js";
 import type {
   ChangedFile,
   CliOptions,
@@ -34,6 +36,7 @@ const VALID_FORMATS: OutputFormat[] = [
   "markdown",
   "sarif",
   "junit",
+  "github",
 ];
 const VALID_RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
 
@@ -144,9 +147,15 @@ export async function run(argv: string[] = process.argv): Promise<void> {
     )
     .option("--head <ref>", "Head git ref to compare to.", "HEAD")
     .option(
+      "--config-ref <ref>",
+      "Read the config file from this git ref (for example origin/main)\n" +
+        "  instead of the working tree, so a pull request cannot change the\n" +
+        "  settings that review it.",
+    )
+    .option(
       "--format <format>",
       "Output format: text (human-readable), json (machine-readable),\n" +
-        "  markdown (GitHub PR comment), sarif, or junit.",
+        "  markdown (GitHub PR comment), sarif, junit, or github (workflow annotations).",
       "text",
     )
     .option(
@@ -214,7 +223,12 @@ Examples:
     .action(async (opts) => {
       let config = null;
       try {
-        config = loadConfig(opts.config as string | undefined);
+        config = opts.configRef
+          ? loadConfigFromRef(
+              opts.configRef as string,
+              opts.config as string | undefined,
+            )
+          : loadConfig(opts.config as string | undefined);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         const path = opts.config
@@ -264,12 +278,18 @@ Examples:
             },
           ])
         : [];
-      const rules = [
-        ...DEFAULT_RULES,
-        ...configRules,
-        ...presetRules,
-        ...extraRules,
-      ];
+      let rules;
+      try {
+        rules = applyRuleSettings(
+          [...DEFAULT_RULES, ...configRules, ...presetRules, ...extraRules],
+          config?.rules,
+        );
+      } catch (err) {
+        console.error(
+          `Error: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        process.exit(2);
+      }
 
       let allFiles;
       try {
@@ -318,6 +338,8 @@ Examples:
         console.log(renderSarif(report, renderOpts));
       } else if (options.format === "junit") {
         console.log(renderJunit(report, renderOpts));
+      } else if (options.format === "github") {
+        console.log(renderGithub(report, renderOpts));
       } else {
         console.log(renderText(report, renderOpts));
       }

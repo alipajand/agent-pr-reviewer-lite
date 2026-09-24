@@ -17,6 +17,7 @@ export {
 } from "./github.js";
 export {
   loadConfig,
+  loadConfigFromRef,
   isIgnored,
   globToRegex,
   CONFIG_FILE_NAME,
@@ -28,6 +29,7 @@ export {
   BUILTIN_PRESET_NAMES,
   buildExtraRules,
   buildPresetRules,
+  applyRuleSettings,
 } from "./rules.js";
 export type { Rule } from "./rules.js";
 export { buildReport, shouldFail } from "./risk.js";
@@ -36,6 +38,7 @@ export { renderJson } from "./reporters/json.js";
 export { renderMarkdown } from "./reporters/markdown.js";
 export { renderSarif } from "./reporters/sarif.js";
 export { renderJunit } from "./reporters/junit.js";
+export { renderGithub } from "./reporters/github.js";
 export type {
   ChangeStatus,
   ChangedFile,
@@ -49,5 +52,6 @@ export type {
   Config,
   ExtraRiskPath,
   PresetName,
+  RuleSetting,
 } from "./types.js";
 export { RISK_LEVEL_ORDER } from "./types.js";

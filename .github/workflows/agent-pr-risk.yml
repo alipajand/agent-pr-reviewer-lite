@@ -42,4 +42,6 @@ jobs:
           node dist/cli.js \
             --base "origin/${BASE_REF}" \
             --head HEAD \
+            --config-ref "origin/${BASE_REF}" \
+            --format github \
             --fail-on high

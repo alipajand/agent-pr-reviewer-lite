@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { writeFileSync, mkdirSync, rmSync } from "node:fs";
+import { writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -500,4 +500,41 @@ describe("extraRiskPaths integration", () => {
       report.findings.find((x) => x.id === "renewals-rule"),
     ).toBeUndefined();
   });
+});
+
+describe("config.rules", () => {
+  function write(value: unknown): string {
+    const dir = mkdtempSync(join(tmpdir(), "apr-rules-"));
+    writeFileSync(
+      join(dir, "agent-pr-reviewer-lite.config.json"),
+      JSON.stringify(value),
+    );
+    return dir;
+  }
+
+  it("parses off and severity settings", () => {
+    const dir = write({
+      rules: { "pricing-copy-changed": "off", "infra-changed": "high" },
+    });
+    try {
+      expect(loadConfig(undefined, dir)?.rules).toEqual({
+        "pricing-copy-changed": "off",
+        "infra-changed": "high",
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it.each([[{ rules: [] }], [{ rules: { x: "disabled" } }]])(
+    "rejects %j",
+    (value) => {
+      const dir = write(value);
+      try {
+        expect(() => loadConfig(undefined, dir)).toThrow(/config\.rules/);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
 });

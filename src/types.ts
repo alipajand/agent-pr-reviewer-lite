@@ -30,7 +30,8 @@ export type ReviewReport = {
 
 export type PresetName = "nextjs-saas" | "supabase" | "stripe";
 
-export type OutputFormat = "text" | "json" | "markdown" | "sarif" | "junit";
+export type OutputFormat =
+  "text" | "json" | "markdown" | "sarif" | "junit" | "github";
 
 export type CliOptions = {
   base: string;
@@ -65,7 +66,11 @@ export type Config = {
   ignore?: string[];
   presets?: PresetName[];
   extraRiskPaths?: ExtraRiskPath[];
+  /** Per-rule overrides: turn a rule "off" or change its severity. */
+  rules?: Record<string, RuleSetting>;
 };
+
+export type RuleSetting = RiskLevel | "off";
 
 /** Exact JSON output shape exposed to callers / CI systems. */
 export type JsonReport = {

@@ -62,7 +62,8 @@ Options:
   --config <path>      Path to config JSON file (default: auto-discover)
   --base <ref>         Base git ref to compare from (default: main)
   --head <ref>         Head git ref to compare to (default: HEAD)
-  --format <format>    Output format: text | json | markdown | sarif | junit (default: text)
+  --config-ref <ref>   Read the config file from this git ref (e.g. origin/main)
+  --format <format>    Output format: text | json | markdown | sarif | junit | github (default: text)
   --fail-on <level>    Exit 1 when risk >= level: low | medium | high (default: high)
   --preset <name>      Built-in preset: nextjs-saas | supabase | stripe (repeatable)
   --changed-files <path>
@@ -198,13 +199,14 @@ Use `--format junit` to emit one test case per finding. Findings at or above `--
 
 ### Config fields
 
-| Field            | Type                          | Description                                            |
-| ---------------- | ----------------------------- | ------------------------------------------------------ |
-| `base`           | `string`                      | Default base ref (overridden by `--base`)              |
-| `failOn`         | `"low" \| "medium" \| "high"` | Default fail threshold (overridden by `--fail-on`)     |
-| `presets`        | `PresetName[]`                | Built-in rule packs layered on top of the defaults     |
-| `ignore`         | `string[]`                    | Glob patterns — matched files are skipped by all rules |
-| `extraRiskPaths` | `ExtraRiskPath[]`             | Custom path rules appended to the built-in set         |
+| Field            | Type                                                   | Description                                                                                                                    |
+| ---------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `base`           | `string`                                               | Default base ref (overridden by `--base`)                                                                                      |
+| `failOn`         | `"low" \| "medium" \| "high"`                          | Default fail threshold (overridden by `--fail-on`)                                                                             |
+| `presets`        | `PresetName[]`                                         | Built-in rule packs layered on top of the defaults                                                                             |
+| `ignore`         | `string[]`                                             | Glob patterns — matched files are skipped by all rules                                                                         |
+| `extraRiskPaths` | `ExtraRiskPath[]`                                      | Custom path rules appended to the built-in set                                                                                 |
+| `rules`          | `Record<string, "off" \| "low" \| "medium" \| "high">` | Turn a rule off or change its severity. Unknown IDs are rejected; `reviewer-config-changed` cannot be turned off or downgraded |
 
 ### Built-in presets
 
@@ -294,7 +296,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Always pass `--base` explicitly in CI. The config file is read from the pull request's own checkout, so a `base` value there is controlled by the PR author.
+Always pass `--base` explicitly in CI. By default the config file is read from the pull request's own checkout, so its values are controlled by the PR author. Pass `--config-ref "origin/${BASE_REF}"` to read the config from the base branch instead; then a pull request cannot change the rules, ignore patterns, or presets that review it.
+
+`--format github` prints workflow annotations, so each finding appears inline on the changed file in the pull request.
 
 `fetch-depth: 0` is required so the base branch history is available for the diff. `--github-comment` posts (or updates) the markdown report as a PR comment; it is silently skipped when `GITHUB_TOKEN`, `GITHUB_REPOSITORY`, or `GITHUB_EVENT_PATH` are absent — safe for local runs.
 
@@ -349,7 +353,7 @@ The tool is designed to run on pull requests you do not control:
 
 - **No option injection.** `--base` and `--head` (including `base` from the config file) must be git refs. Values that start with `-` are rejected, and git receives `--end-of-options` before the refs.
 - **Exact paths.** Changed files are read with `git diff -z`, so paths with spaces, quotes, or non-ASCII characters are matched exactly instead of in git's quoted form.
-- **A PR cannot hide its own review.** Changes to the reviewer config are always reported as `reviewer-config-changed` (high), and `ignore` patterns cannot suppress them. Renames are evaluated on both paths.
+- **A PR cannot hide its own review.** Changes to the reviewer config are always reported as `reviewer-config-changed` (high); `ignore` patterns cannot suppress them and `rules` cannot turn them off. With `--config-ref`, the config in effect comes from a trusted ref, so a PR's edits to it have no effect on its own review. Renames are evaluated on both paths.
 - **Safe output.** File names and dependency names are rendered as inline code in Markdown, HTML is escaped, and control characters are removed from text output, so a file name cannot inject `::workflow-commands::` or terminal escapes.
 - **PR comments.** Only a comment that starts with the report marker and was written by a bot account (or by `--github-comment-author`) is updated. Pasting the marker into your own comment does not make the bot overwrite it.
 - **Bounded work.** Glob patterns match in linear time, and config files must be regular files under 1 MiB.
@@ -379,6 +383,7 @@ This tool is intentionally conservative. A false positive is cheaper than silent
 - `--changed-files <path>`
 - `reviewer-config-changed` rule and rename-aware rule evaluation
 - `--github-comment-author <login>`
+- `--config-ref <ref>`, per-rule `rules` settings, and `--format github`
 
 ## Related tools
 

@@ -48,8 +48,12 @@ jobs:
           pnpm agent-pr-reviewer-lite \
             --base "origin/${BASE_REF}" \
             --head HEAD \
+            --config-ref "origin/${BASE_REF}" \
+            --format github \
             --fail-on high
 ```
+
+`--config-ref` reads `agent-pr-reviewer-lite.config.json` from the base branch, so the pull request cannot change the rules that review it. `--format github` turns each finding into an annotation on the changed file.
 
 Pass `github.base_ref` through an environment variable rather than interpolating `${{ }}` into the script, and always pass `--base`: the config file comes from the pull request's own checkout.
 
