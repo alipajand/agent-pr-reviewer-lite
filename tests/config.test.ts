@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { writeFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -139,11 +139,7 @@ describe("isIgnored", () => {
 let tmpDir: string;
 
 beforeEach(() => {
-  tmpDir = join(
-    tmpdir(),
-    `apr-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  );
-  mkdirSync(tmpDir, { recursive: true });
+  tmpDir = mkdtempSync(join(tmpdir(), "apr-test-"));
 });
 
 afterEach(() => {

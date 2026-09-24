@@ -1,8 +1,8 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
 import { resolve } from "node:path";
 import { compileGlob } from "./glob.js";
 import { BUILTIN_PRESET_NAMES } from "./rules.js";
 import { readFileAtRef } from "./git.js";
+import { readRegularFileSync } from "./readFile.js";
 import type {
   Config,
   ExtraRiskPath,
@@ -211,20 +211,19 @@ export function loadConfig(configPath?: string, cwd?: string): Config | null {
     ? resolve(configPath)
     : resolve(cwd ?? process.cwd(), CONFIG_FILE_NAME);
 
-  if (!existsSync(filePath)) {
+  // The config usually comes from the repository under review: refuse FIFOs,
+  // devices, and oversized files that could hang or exhaust the process.
+  const read = readRegularFileSync(filePath, MAX_CONFIG_BYTES);
+  if (read.status === "missing") {
     if (configPath) {
       throw new Error(`Config file not found: ${filePath}`);
     }
     return null;
   }
-
-  // The config usually comes from the repository under review: refuse FIFOs,
-  // devices, and oversized files that could hang or exhaust the process.
-  const stat = statSync(filePath);
-  if (!stat.isFile()) {
+  if (read.status === "not-a-file") {
     throw new Error(`Config path is not a regular file: ${filePath}`);
   }
-  if (stat.size > MAX_CONFIG_BYTES) {
+  if (read.status === "too-large") {
     throw new Error(
       `Config file is larger than ${MAX_CONFIG_BYTES} bytes: ${filePath}`,
     );
@@ -232,7 +231,7 @@ export function loadConfig(configPath?: string, cwd?: string): Config | null {
 
   let raw: unknown;
   try {
-    raw = JSON.parse(readFileSync(filePath, "utf8"));
+    raw = JSON.parse(read.content);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     throw new Error(`Failed to parse config file '${filePath}': ${msg}`);

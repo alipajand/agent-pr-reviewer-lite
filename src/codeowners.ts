@@ -1,6 +1,6 @@
-import { readFileSync, statSync } from "node:fs";
 import { compileGlob } from "./glob.js";
 import { readFileAtRef } from "./git.js";
+import { readRegularFileSync } from "./readFile.js";
 
 /** Where GitHub looks for CODEOWNERS, in order. */
 export const CODEOWNERS_LOCATIONS = [
@@ -38,11 +38,21 @@ export function codeownersGlobs(pattern: string): string[] {
   return /[*?]/.test(last) ? [base] : [base, `${base}/**`];
 }
 
+/** Text before a `#` that starts the line or follows whitespace. */
+function stripComment(line: string): string {
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === "#" && (i === 0 || /\s/.test(line[i - 1]))) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+
 /** Parse CODEOWNERS text into rules, in file order. */
 export function parseCodeowners(text: string): CodeownersRule[] {
   const rules: CodeownersRule[] = [];
   for (const raw of text.split("\n")) {
-    const line = raw.replace(/(^|\s)#.*$/, "").trim();
+    const line = stripComment(raw).trim();
     if (!line) continue;
     const [pattern, ...owners] = line.split(/\s+/);
     const matchers = codeownersGlobs(pattern).map(compileGlob);
@@ -66,9 +76,8 @@ export function ownersFor(rules: CodeownersRule[], path: string): string[] {
 
 function readWorkingTreeFile(path: string): string | null {
   try {
-    const stat = statSync(path);
-    if (!stat.isFile() || stat.size > MAX_CODEOWNERS_BYTES) return null;
-    return readFileSync(path, "utf8");
+    const read = readRegularFileSync(path, MAX_CODEOWNERS_BYTES);
+    return read.status === "ok" ? read.content : null;
   } catch {
     return null;
   }

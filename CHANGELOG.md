@@ -47,6 +47,9 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- The config file and CODEOWNERS are checked for type and size on the opened descriptor, not the path, and opened non-blocking, so a file cannot be swapped for a FIFO or a larger file between the check and the read.
+- CODEOWNERS comments are stripped without a regular expression that could take quadratic time on crafted lines.
+- Markdown code cells double a backslash run before `|`, so a backslash in a file name cannot cancel the escaped pipe and split the table cell.
 - `--base`/`--head` values (including `base` from the config file) that start with `-` are rejected, and git gets `--end-of-options`. Previously a config file in the reviewed PR could set `base` to `--output=<path>` and make `git diff` write to an arbitrary file.
 - Changed files are read with `git diff -z`. Previously git quoted non-ASCII paths (`"supabase/migrations/\303\274.sql"`), so anchored rules such as `migration-changed` silently missed them.
 - Renames no longer bypass path rules, and moving a test out of the suite is no longer a silent way to delete it.
