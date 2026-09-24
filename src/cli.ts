@@ -21,6 +21,7 @@ import { renderMarkdown } from "./reporters/markdown.js";
 import { renderSarif } from "./reporters/sarif.js";
 import { renderJunit } from "./reporters/junit.js";
 import { renderGithub } from "./reporters/github.js";
+import { loadCodeowners, ownersFor } from "./codeowners.js";
 import type {
   ChangedFile,
   CliOptions,
@@ -322,6 +323,17 @@ Examples:
       );
 
       const report = buildReport(options.base, options.head, files, rules);
+
+      // GitHub enforces the base branch's CODEOWNERS, so read it from there.
+      const codeowners = loadCodeowners(
+        options.changedFiles ? undefined : options.base,
+      );
+      if (codeowners.length > 0) {
+        report.findings = report.findings.map((f) => {
+          const owners = ownersFor(codeowners, f.file);
+          return owners.length > 0 ? { ...f, owners } : f;
+        });
+      }
       const failed = shouldFail(report.overallRisk, options.failOn);
 
       const renderOpts: RenderOptions = {

@@ -349,6 +349,17 @@ Custom rules added via `extraRiskPaths` appear after the built-ins at whatever s
 
 Renamed files are checked against both the new and the previous path, so moving `src/auth/tokens.ts` to `scratch/tokens.ts` is still flagged. An `ignore` pattern hides a rename only when it matches both paths.
 
+## Code owners
+
+When the repository has a `CODEOWNERS` file (`.github/CODEOWNERS`, `CODEOWNERS`, or `docs/CODEOWNERS`), each finding gets the owners of its file, and the required-review list names them:
+
+```
+Required human review:
+- auth/session (owners: @org/security)
+```
+
+JSON findings get an `owners` array. The file is read from the `--base` ref, because that is the copy GitHub enforces; a pull request that edits `CODEOWNERS` cannot change who reviews it. Patterns follow GitHub's rules, and the last matching line wins.
+
 ## Security
 
 The tool is designed to run on pull requests you do not control:

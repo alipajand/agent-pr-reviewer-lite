@@ -777,3 +777,40 @@ describe("run — rule settings and trusted config", () => {
     expect(stdout).toContain("Agent PR Risk: High");
   });
 });
+
+describe("run — CODEOWNERS owners", () => {
+  it("adds owners from the base branch CODEOWNERS to findings", async () => {
+    const repo = setup();
+    writeAndCommit(
+      repo,
+      { ".github/CODEOWNERS": "/src/auth/ @org/security\n*.md @org/docs\n" },
+      "owners",
+    );
+    git(["branch", "base"], repo);
+    writeAndCommit(
+      repo,
+      {
+        // The PR tries to reassign ownership; the base branch copy still applies.
+        ".github/CODEOWNERS": "* @mallory\n",
+        "src/auth/session.ts": "export {};\n",
+      },
+      "change auth",
+    );
+
+    const json = await runCli([
+      "--base",
+      "base",
+      "--head",
+      "HEAD",
+      "--format",
+      "json",
+    ]);
+    const auth = JSON.parse(json.stdout).findings.find(
+      (f: { file: string }) => f.file === "src/auth/session.ts",
+    );
+    expect(auth.owners).toEqual(["@org/security"]);
+
+    const text = await runCli(["--base", "base", "--head", "HEAD"]);
+    expect(text.stdout).toContain("- auth/session (owners: @org/security)");
+  });
+});

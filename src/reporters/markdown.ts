@@ -6,6 +6,7 @@ import {
   markdownCodeCell,
   markdownFindingText,
   requiredReviewLabels,
+  reviewOwners,
   shouldExplain,
   uniqueFindings,
 } from "./shared.js";
@@ -49,8 +50,14 @@ export function renderMarkdown(
     const reviewLabels = requiredReviewLabels(unique);
     if (reviewLabels.length > 0) {
       lines.push("### Required human review");
+      const owners = reviewOwners(unique);
       for (const label of reviewLabels) {
-        lines.push(`- ${escapeMarkdownCell(label)}`);
+        const who = owners.get(label);
+        lines.push(
+          who
+            ? `- ${escapeMarkdownCell(label)} — ${who.map(markdownCodeCell).join(", ")}`
+            : `- ${escapeMarkdownCell(label)}`,
+        );
       }
     }
   }

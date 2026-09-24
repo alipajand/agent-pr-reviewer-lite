@@ -4,6 +4,7 @@ import {
   displayText,
   explainText,
   requiredReviewLabels,
+  reviewOwners,
   shouldExplain,
   toSafeText,
   uniqueFindings,
@@ -30,8 +31,14 @@ export function renderText(report: ReviewReport, opts: RenderOptions): string {
     const reviewLabels = requiredReviewLabels(unique);
     if (reviewLabels.length > 0) {
       lines.push("Required human review:");
+      const owners = reviewOwners(unique);
       for (const label of reviewLabels) {
-        lines.push(`- ${toSafeText(label)}`);
+        const who = owners.get(label);
+        lines.push(
+          who
+            ? `- ${toSafeText(label)} (owners: ${toSafeText(who.join(", "))})`
+            : `- ${toSafeText(label)}`,
+        );
       }
     }
   }

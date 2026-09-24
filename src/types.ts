@@ -18,6 +18,8 @@ export type RiskFinding = {
   reason: string;
   explain?: string;
   requiredReview?: string;
+  /** CODEOWNERS owners of the file, when a CODEOWNERS file assigns any. */
+  owners?: string[];
 };
 
 export type ReviewReport = {
@@ -83,6 +85,7 @@ export type JsonReport = {
     file: string;
     reason: string;
     requiredReview?: string;
+    owners?: string[];
   }>;
   requiredHumanReview: string[];
   ci: {
