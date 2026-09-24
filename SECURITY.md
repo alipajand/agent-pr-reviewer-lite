@@ -4,7 +4,8 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 0.x     | ✓ Current |
+| 1.x     | ✓ Current |
+| 0.x     | ✗         |
 
 `agent-pr-reviewer-lite` requires Node.js 22.13 or later.
 

@@ -1,5 +1,6 @@
 import type { RenderOptions, ReviewReport, RiskLevel } from "../types.js";
 import { displayText, explainText, uniqueFindings } from "./shared.js";
+import { VERSION } from "../version.js";
 
 function sarifLevel(severity: RiskLevel): "error" | "warning" | "note" {
   if (severity === "high") return "error";
@@ -61,6 +62,9 @@ export function renderSarif(report: ReviewReport, opts: RenderOptions): string {
           tool: {
             driver: {
               name: "agent-pr-reviewer-lite",
+              version: VERSION,
+              informationUri:
+                "https://github.com/alipajand/agent-pr-reviewer-lite",
               rules,
             },
           },

@@ -32,7 +32,7 @@ The tool auto-discovers `agent-pr-reviewer-lite.config.json` in the working dire
 
 ### 3. Add the package script
 
-Add this to `package.json` (see `package.json.snippet` in this directory for the full snippet):
+Add this to `package.json`. `package.json.snippet` in this directory has the full snippet, including the devDependency: it installs the CLI from GitHub pinned to a commit (replace `<commit-sha>`), because the name is not published on npm.
 
 ```json
 {
