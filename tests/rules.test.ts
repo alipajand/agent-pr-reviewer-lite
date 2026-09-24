@@ -1029,3 +1029,167 @@ describe("reviewer-config-changed", () => {
     ).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// CI, agent config, governance, secrets, infra, package manager, git hooks
+// ---------------------------------------------------------------------------
+
+describe.each([
+  {
+    id: "ci-workflow-changed",
+    severity: "high",
+    hits: [
+      ".github/workflows/ci.yml",
+      ".github/actions/setup/action.yml",
+      "action.yml",
+      ".gitlab-ci.yml",
+      ".circleci/config.yml",
+      "Jenkinsfile",
+      "azure-pipelines.yml",
+      ".buildkite/pipeline.yml",
+    ],
+    misses: [
+      "docs/workflows.md",
+      "src/ci/helpers.ts",
+      ".github/ISSUE_TEMPLATE/bug.md",
+    ],
+  },
+  {
+    id: "agent-permissions-changed",
+    severity: "high",
+    hits: [
+      ".claude/settings.json",
+      ".claude/settings.local.json",
+      ".mcp.json",
+      "packages/web/.mcp.json",
+      ".cursor/mcp.json",
+      ".vscode/mcp.json",
+      ".codex/config.toml",
+    ],
+    misses: [
+      ".vscode/settings.json",
+      "src/mcp.json.ts",
+      "docs/claude/settings.json",
+    ],
+  },
+  {
+    id: "agent-instructions-changed",
+    severity: "medium",
+    hits: [
+      "AGENTS.md",
+      "packages/api/CLAUDE.md",
+      "GEMINI.md",
+      ".cursorrules",
+      ".cursor/rules/api.mdc",
+      ".github/copilot-instructions.md",
+      ".github/instructions/tests.instructions.md",
+      ".claude/commands/review.md",
+      ".claude/agents/reviewer.md",
+      ".clinerules",
+      ".clinerules/01-style.md",
+      ".windsurf/rules/style.md",
+    ],
+    misses: ["docs/agents.md", "src/agents/index.ts", ".cursor/mcp.json"],
+  },
+  {
+    id: "codeowners-changed",
+    severity: "high",
+    hits: [
+      "CODEOWNERS",
+      ".github/CODEOWNERS",
+      "docs/CODEOWNERS",
+      ".github/settings.yml",
+    ],
+    misses: ["src/CODEOWNERS.ts", "packages/a/CODEOWNERS"],
+  },
+  {
+    id: "secret-material-committed",
+    severity: "high",
+    hits: [
+      "certs/server.pem",
+      "deploy/prod.key",
+      "keystore.jks",
+      ".ssh/id_ed25519",
+      "config/credentials.json",
+      "secrets.yaml",
+      "gcp-service-account.json",
+      ".netrc",
+      "infra/terraform.tfstate",
+    ],
+    misses: [
+      ".ssh/id_ed25519.pub",
+      "src/keys.ts",
+      "docs/credentials.md",
+      "api.key.ts",
+    ],
+  },
+  {
+    id: "infra-changed",
+    severity: "medium",
+    hits: [
+      "infra/main.tf",
+      "prod.tfvars",
+      "k8s/deployment.yaml",
+      "charts/app/values.yaml",
+      "Dockerfile",
+      "services/api/Dockerfile.prod",
+      "docker-compose.yml",
+      "vercel.json",
+      "fly.toml",
+    ],
+    misses: ["docs/docker.md", "src/terraform.ts"],
+  },
+  {
+    id: "package-manager-config-changed",
+    severity: "medium",
+    hits: [
+      ".npmrc",
+      ".yarnrc.yml",
+      "pnpm-workspace.yaml",
+      ".pnpmfile.cjs",
+      "bunfig.toml",
+    ],
+    misses: ["package.json", "docs/npmrc.md"],
+  },
+  {
+    id: "git-hooks-changed",
+    severity: "medium",
+    hits: [
+      ".husky/pre-commit",
+      "lefthook.yml",
+      ".pre-commit-config.yaml",
+      ".lintstagedrc.json",
+    ],
+    misses: ["src/hooks/useAuthHook.ts", "docs/git-hooks.md"],
+  },
+])("$id", ({ id, severity, hits, misses }) => {
+  it.each(hits)(`flags %s as ${severity}`, (path) => {
+    expect(hasRule([file(path)], id, severity)).toBe(true);
+  });
+
+  it.each(misses)("does not flag %s", (path) => {
+    expect(hasRule([file(path)], id)).toBe(false);
+  });
+});
+
+describe("secret-material-committed statuses", () => {
+  it("does not flag deleting key material", () => {
+    expect(
+      hasRule(
+        [file("certs/server.pem", "deleted")],
+        "secret-material-committed",
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("new rules on renames", () => {
+  it("flags a CI workflow renamed out of .github/workflows", () => {
+    const renamed: ChangedFile = {
+      path: "old/ci.yml",
+      previousPath: ".github/workflows/ci.yml",
+      status: "renamed",
+    };
+    expect(hasRule([renamed], "ci-workflow-changed")).toBe(true);
+  });
+});

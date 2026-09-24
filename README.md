@@ -314,20 +314,28 @@ The `--github-comment` flag never changes the exit code. A comment-posting failu
 
 All built-in rules are deterministic regex pattern matches. No ML, no heuristics.
 
-| ID                        | Severity   | Trigger                                                                                                           |
-| ------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------- |
-| `auth-file-touched`       | **High**   | Files matching `/auth/`, `session.ts`, `middleware.ts`, `jwt`, Clerk, NextAuth                                    |
-| `billing-file-touched`    | **High**   | Files matching `/billing/`, `/stripe/`, `checkout`, `subscription`, `invoice`, `payment`                          |
-| `security-file-touched`   | **High**   | Files matching `/security/`, `rls`, `policy`, `permissions`, `access-control`, `rate-limit`, `csrf`, `cors`       |
-| `migration-changed`       | **High**   | Files under `supabase/migrations/`, `migrations/`, `prisma/migrations/`, or `*.sql` in a migrations dir           |
-| `test-deleted`            | **High**   | Deleted files matching `*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, or `test/`, or tests moved out of those    |
-| `reviewer-config-changed` | **High**   | `agent-pr-reviewer-lite.config.json` (any depth) or the file passed to `--config`; `ignore` cannot hide it        |
-| `env-var-file-changed`    | **Medium** | `.env`, `.env.local`, `.env.production`, `.env.development`, `.env.example`                                       |
-| `package-lock-changed`    | **Medium** | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`                                                   |
-| `generated-file-edited`   | **Medium** | Paths containing `generated/`, `__generated__/`, `.generated.ts`, `.gen.ts`                                       |
-| `public-route-changed`    | **Medium** | Next.js `app/**/page.tsx`, `app/**/layout.tsx`, `pages/**` (src/ variants too)                                    |
-| `pricing-copy-changed`    | **Medium** | Files matching `pricing`, `plans`, `checkout`, `subscription`, `billing`, `marketing`, `landing`                  |
-| `dependency-added`        | **Medium** | New entries in `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies` in `package.json` |
+| ID                               | Severity   | Trigger                                                                                                                                                                                  |
+| -------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auth-file-touched`              | **High**   | Files matching `/auth/`, `session.ts`, `middleware.ts`, `jwt`, Clerk, NextAuth                                                                                                           |
+| `billing-file-touched`           | **High**   | Files matching `/billing/`, `/stripe/`, `checkout`, `subscription`, `invoice`, `payment`                                                                                                 |
+| `security-file-touched`          | **High**   | Files matching `/security/`, `rls`, `policy`, `permissions`, `access-control`, `rate-limit`, `csrf`, `cors`                                                                              |
+| `migration-changed`              | **High**   | Files under `supabase/migrations/`, `migrations/`, `prisma/migrations/`, or `*.sql` in a migrations dir                                                                                  |
+| `test-deleted`                   | **High**   | Deleted files matching `*.test.*`, `*.spec.*`, `__tests__/`, `tests/`, or `test/`, or tests moved out of those                                                                           |
+| `reviewer-config-changed`        | **High**   | `agent-pr-reviewer-lite.config.json` (any depth) or the file passed to `--config`; `ignore` cannot hide it                                                                               |
+| `ci-workflow-changed`            | **High**   | `.github/workflows/*.yml`, `.github/actions/**`, `action.yml`, GitLab CI, CircleCI, Jenkinsfile, Azure Pipelines, Buildkite, Travis, Drone                                               |
+| `agent-permissions-changed`      | **High**   | `.claude/settings*.json`, `.mcp.json`, `.cursor/mcp.json`, `.vscode/mcp.json`, `.gemini/settings.json`, `.codex/config.toml`                                                             |
+| `codeowners-changed`             | **High**   | `CODEOWNERS` (root, `.github/`, `docs/`), `.github/settings.yml`                                                                                                                         |
+| `secret-material-committed`      | **High**   | Added or modified `*.pem`, `*.key`, `*.p12`, `*.jks`, private SSH keys, `credentials.*`, `secrets.*`, service-account JSON, `.netrc`, `*.tfstate`                                        |
+| `env-var-file-changed`           | **Medium** | `.env`, `.env.local`, `.env.production`, `.env.development`, `.env.example`                                                                                                              |
+| `package-lock-changed`           | **Medium** | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`                                                                                                                          |
+| `generated-file-edited`          | **Medium** | Paths containing `generated/`, `__generated__/`, `.generated.ts`, `.gen.ts`                                                                                                              |
+| `public-route-changed`           | **Medium** | Next.js `app/**/page.tsx`, `app/**/layout.tsx`, `pages/**` (src/ variants too)                                                                                                           |
+| `pricing-copy-changed`           | **Medium** | Files matching `pricing`, `plans`, `checkout`, `subscription`, `billing`, `marketing`, `landing`                                                                                         |
+| `agent-instructions-changed`     | **Medium** | `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` (any depth), Cursor rules, Copilot instructions and prompts, Claude commands/agents/skills, Windsurf, Cline, Roo, Kiro, Junie, Goose, Continue rules |
+| `infra-changed`                  | **Medium** | Terraform, Kubernetes/Helm/Kustomize, Dockerfiles, Compose files, Vercel/Netlify/Fly/Render/Railway/Firebase/Wrangler/CDK/Pulumi config                                                  |
+| `package-manager-config-changed` | **Medium** | `.npmrc`, `.yarnrc(.yml)`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `bunfig.toml`, `pip.conf`, `.pypirc`                                                                                  |
+| `git-hooks-changed`              | **Medium** | `.husky/**`, `lefthook.yml`, `.pre-commit-config.yaml`, `.githooks/**`, lint-staged config                                                                                               |
+| `dependency-added`               | **Medium** | New entries in `dependencies`, `devDependencies`, `peerDependencies`, or `optionalDependencies` in `package.json`                                                                        |
 
 Custom rules added via `extraRiskPaths` appear after the built-ins at whatever severity you configure.
 

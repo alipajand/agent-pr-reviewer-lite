@@ -11,6 +11,10 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- `ci-workflow-changed` (high): GitHub Actions workflows and actions, GitLab CI, CircleCI, Jenkins, Azure Pipelines, Buildkite, Travis, and Drone config.
+- `agent-permissions-changed` (high): Claude Code settings, MCP server configs, and Codex config — they decide which tools agents use without asking.
+- `agent-instructions-changed` (medium): AGENTS.md/CLAUDE.md/GEMINI.md at any depth and tool-specific rule files (Cursor, Copilot, Claude commands/agents/skills, Windsurf, Cline, Roo, Kiro, Junie, Goose, Continue).
+- `codeowners-changed` (high), `secret-material-committed` (high: keys, credentials files, service-account JSON, `.netrc`, Terraform state), `infra-changed` (medium), `package-manager-config-changed` (medium: `.npmrc`, `pnpm-workspace.yaml`, …), and `git-hooks-changed` (medium).
 - `reviewer-config-changed` (high): flags changes to `agent-pr-reviewer-lite.config.json` or the `--config` file. `ignore` patterns cannot hide it.
 - `test-deleted` also fires when a test file is moved out of the test suite.
 - `--github-comment-author <login>` to pick which account's report comment is updated.

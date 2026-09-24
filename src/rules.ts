@@ -1,6 +1,7 @@
 import { compileGlob } from "./glob.js";
 import type {
   ChangedFile,
+  ChangeStatus,
   ExtraRiskPath,
   RiskFinding,
   RiskLevel,
@@ -63,6 +64,36 @@ function normalizeMatch(
     return match;
   }
   return finding(rule, file, match.reason, match.explain);
+}
+
+/**
+ * A rule that fires when a changed file (or, for renames, its previous path)
+ * matches one of `patterns`. `statuses` limits it to some change types.
+ */
+function pathRule(spec: {
+  id: string;
+  label: string;
+  severity: RiskLevel;
+  requiredReview: string;
+  patterns: RegExp[];
+  reason: (file: ChangedFile) => string;
+  statuses?: ChangeStatus[];
+}): Rule {
+  return {
+    id: spec.id,
+    label: spec.label,
+    severity: spec.severity,
+    requiredReview: spec.requiredReview,
+    match(file) {
+      if (spec.statuses && !spec.statuses.includes(file.status)) return null;
+      const matched = firstMatchingPattern(file.path, spec.patterns);
+      if (!matched) return null;
+      return {
+        reason: spec.reason(file),
+        explain: `Matched built-in path pattern ${matched.toString()}`,
+      };
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -163,6 +194,93 @@ const PRICING_COPY_PATHS = [
   /billing/i,
   /marketing/i,
   /landing/i,
+];
+
+const CI_PATHS = [
+  /^\.github\/workflows\/[^/]+\.ya?ml$/,
+  /^\.github\/actions\//,
+  /(?:^|\/)action\.ya?ml$/,
+  /^\.gitlab-ci\.yml$/,
+  /^\.gitlab\/ci\//,
+  /^\.circleci\//,
+  /(?:^|\/)Jenkinsfile$/,
+  /^azure-pipelines\.ya?ml$/,
+  /^\.azure-pipelines\//,
+  /^bitbucket-pipelines\.yml$/,
+  /^\.buildkite\//,
+  /^\.travis\.yml$/,
+  /^\.drone\.ya?ml$/,
+];
+
+// Settings that change what an AI agent may do without asking.
+const AGENT_PERMISSION_PATHS = [
+  /^\.claude\/settings(?:\.local)?\.json$/,
+  /(?:^|\/)\.mcp\.json$/,
+  /^\.cursor\/mcp\.json$/,
+  /^\.vscode\/mcp\.json$/,
+  /^\.gemini\/settings\.json$/,
+  /^\.roo\/mcp\.json$/,
+  /^\.codex\/config\.toml$/,
+];
+
+// Standing instructions an AI agent reads on every task.
+const AGENT_INSTRUCTION_PATHS = [
+  /(?:^|\/)(?:AGENTS|AGENT|CLAUDE|GEMINI)\.md$/,
+  /^\.cursorrules$/,
+  /^\.cursor\/rules\//,
+  /^\.github\/copilot-instructions\.md$/,
+  /^\.github\/(?:instructions|prompts|chatmodes|agents)\//,
+  /^\.claude\/(?:CLAUDE\.md$|commands\/|agents\/|skills\/)/,
+  /^\.windsurfrules$/,
+  /^\.windsurf\/rules\//,
+  /^\.clinerules(?:\/|$)/,
+  /^\.roo\/rules/,
+  /^\.kiro\/steering\//,
+  /^\.junie\/guidelines\.md$/,
+  /^\.goosehints$/,
+  /^\.continue\/rules\//,
+];
+
+const CODEOWNERS_PATHS = [
+  /^(?:\.github\/|docs\/)?CODEOWNERS$/,
+  /^\.github\/settings\.ya?ml$/,
+];
+
+const SECRET_MATERIAL_PATHS = [
+  /\.(?:pem|key|p12|pfx|jks|keystore|ppk)$/i,
+  /(?:^|\/)id_(?:rsa|dsa|ecdsa|ed25519)$/,
+  /(?:^|\/)\.?(?:credentials|secrets)(?:\.[\w-]+)?\.(?:json|ya?ml|toml|ini)$/i,
+  /(?:^|\/)[\w.-]*service[-_]?account[\w.-]*\.json$/i,
+  /(?:^|\/)\.(?:netrc|pgpass|htpasswd)$/,
+  /\.tfstate(?:\.backup)?$/,
+];
+
+const INFRA_PATHS = [
+  /\.tf$/,
+  /\.tfvars$/,
+  /(?:^|\/)(?:terraform|k8s|kubernetes|helm|charts|kustomize)\//,
+  /(?:^|\/)Dockerfile(?:\.[\w-]+)?$/,
+  /(?:^|\/)(?:docker-)?compose[\w.-]*\.ya?ml$/,
+  /(?:^|\/)(?:serverless\.ya?ml|vercel\.json|netlify\.toml|fly\.toml|render\.ya?ml|railway\.(?:json|toml)|Procfile|cloudbuild\.ya?ml|firebase\.json|wrangler\.toml|cdk\.json)$/,
+  /(?:^|\/)Pulumi(?:\.[\w-]+)?\.ya?ml$/,
+];
+
+const PACKAGE_MANAGER_CONFIG_PATHS = [
+  /(?:^|\/)\.npmrc$/,
+  /(?:^|\/)\.yarnrc(?:\.yml)?$/,
+  /(?:^|\/)\.pnpmfile\.cjs$/,
+  /(?:^|\/)pnpm-workspace\.yaml$/,
+  /(?:^|\/)bunfig\.toml$/,
+  /(?:^|\/)(?:pip\.conf|\.pypirc)$/,
+];
+
+const GIT_HOOK_PATHS = [
+  /^\.husky\//,
+  /(?:^|\/)lefthook(?:-local)?\.ya?ml$/,
+  /(?:^|\/)\.pre-commit-config\.ya?ml$/,
+  /^\.git-?hooks\//,
+  /(?:^|\/)\.lintstagedrc/,
+  /(?:^|\/)lint-staged\.config\./,
 ];
 
 // ---------------------------------------------------------------------------
@@ -338,7 +456,87 @@ export const DEFAULT_RULES: Rule[] = [
     },
   },
 
+  pathRule({
+    id: "ci-workflow-changed",
+    label: "CI/CD pipeline changed",
+    severity: "high",
+    requiredReview: "CI/CD pipeline",
+    patterns: CI_PATHS,
+    reason: (file) =>
+      `CI/CD file '${file.path}' was ${file.status} — pipeline changes can expose secrets or skip required checks`,
+  }),
+
+  pathRule({
+    id: "agent-permissions-changed",
+    label: "AI agent permissions or tools changed",
+    severity: "high",
+    requiredReview: "agent permissions",
+    patterns: AGENT_PERMISSION_PATHS,
+    reason: (file) =>
+      `Agent configuration '${file.path}' was ${file.status} — it controls which tools and MCP servers agents may use without asking`,
+  }),
+
+  pathRule({
+    id: "codeowners-changed",
+    label: "Code ownership or repository settings changed",
+    severity: "high",
+    requiredReview: "code ownership",
+    patterns: CODEOWNERS_PATHS,
+    reason: (file) =>
+      `'${file.path}' was ${file.status} — it decides who must approve changes`,
+  }),
+
+  pathRule({
+    id: "secret-material-committed",
+    label: "Key or credential file committed",
+    severity: "high",
+    requiredReview: "secrets",
+    patterns: SECRET_MATERIAL_PATHS,
+    statuses: ["added", "modified", "renamed"],
+    reason: (file) =>
+      `'${file.path}' looks like key material, credentials, or infrastructure state — keep it out of the repository`,
+  }),
+
   // --- MEDIUM severity ---
+
+  pathRule({
+    id: "agent-instructions-changed",
+    label: "AI agent instructions changed",
+    severity: "medium",
+    requiredReview: "agent instructions",
+    patterns: AGENT_INSTRUCTION_PATHS,
+    reason: (file) =>
+      `Agent instruction file '${file.path}' was ${file.status} — agents follow it on every task`,
+  }),
+
+  pathRule({
+    id: "infra-changed",
+    label: "Infrastructure or deployment config changed",
+    severity: "medium",
+    requiredReview: "infrastructure",
+    patterns: INFRA_PATHS,
+    reason: (file) => `Infrastructure file '${file.path}' was ${file.status}`,
+  }),
+
+  pathRule({
+    id: "package-manager-config-changed",
+    label: "Package manager configuration changed",
+    severity: "medium",
+    requiredReview: "dependency changes",
+    patterns: PACKAGE_MANAGER_CONFIG_PATHS,
+    reason: (file) =>
+      `'${file.path}' was ${file.status} — registries, overrides, and install-script settings decide what code gets installed`,
+  }),
+
+  pathRule({
+    id: "git-hooks-changed",
+    label: "Git hooks changed",
+    severity: "medium",
+    requiredReview: "git hooks",
+    patterns: GIT_HOOK_PATHS,
+    reason: (file) =>
+      `Git hook config '${file.path}' was ${file.status} — hooks run on every developer machine`,
+  }),
 
   {
     id: "env-var-file-changed",
