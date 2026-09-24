@@ -7,6 +7,7 @@ import {
   getPrNumber,
   readEventPayload,
   buildCommentBody,
+  isOwnReportComment,
   isValidRepository,
   postOrUpdateComment,
   tryPostGitHubComment,
@@ -236,7 +237,7 @@ describe("postOrUpdateComment — creates new comment", () => {
     const [listUrl, listOpts] = (fetchFn as ReturnType<typeof vi.fn>).mock
       .calls[0];
     expect(listUrl).toBe(
-      "https://api.github.com/repos/owner/repo/issues/7/comments",
+      "https://api.github.com/repos/owner/repo/issues/7/comments?per_page=100&page=1",
     );
     expect(listOpts.headers?.Authorization).toBe("Bearer ghs_token");
 
@@ -282,7 +283,11 @@ describe("postOrUpdateComment — creates new comment", () => {
 describe("postOrUpdateComment — updates existing comment", () => {
   it("calls PATCH on the existing comment id when marker is found", async () => {
     const existingComments = [
-      { id: 99, body: `${COMMENT_MARKER}\n## Old report` },
+      {
+        id: 99,
+        body: `${COMMENT_MARKER}\n## Old report`,
+        user: { login: "github-actions[bot]", type: "Bot" },
+      },
     ];
     const fetchFn = vi
       .fn()
@@ -522,5 +527,138 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
     const sentBody = JSON.parse(createOpts.body as string).body as string;
     expect(sentBody).toContain(COMMENT_MARKER);
     expect(sentBody).toContain("## Agent PR Risk: Low");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Comment ownership, pagination, and size limits
+// ---------------------------------------------------------------------------
+
+function okJson(value: unknown) {
+  return { ok: true, status: 200, statusText: "OK", json: async () => value };
+}
+
+describe("isOwnReportComment", () => {
+  const bot = { login: "github-actions[bot]", type: "Bot" };
+
+  it("accepts a bot comment that starts with the marker", () => {
+    expect(
+      isOwnReportComment({
+        id: 1,
+        body: `${COMMENT_MARKER}\nreport`,
+        user: bot,
+      }),
+    ).toBe(true);
+  });
+
+  it("rejects a user comment that pastes the marker", () => {
+    expect(
+      isOwnReportComment({
+        id: 1,
+        body: `${COMMENT_MARKER}\nlooks official`,
+        user: { login: "mallory", type: "User" },
+      }),
+    ).toBe(false);
+  });
+
+  it("rejects a bot comment that only contains the marker later on", () => {
+    expect(
+      isOwnReportComment({
+        id: 1,
+        body: `quote: ${COMMENT_MARKER}`,
+        user: bot,
+      }),
+    ).toBe(false);
+  });
+
+  it("matches an explicit author login instead of the bot type", () => {
+    const comment = {
+      id: 1,
+      body: `${COMMENT_MARKER}\nreport`,
+      user: { login: "release-bot-user", type: "User" },
+    };
+    expect(isOwnReportComment(comment, "release-bot-user")).toBe(true);
+    expect(isOwnReportComment(comment, "someone-else")).toBe(false);
+  });
+
+  it("tolerates missing body or user", () => {
+    expect(isOwnReportComment({ id: 1, body: null, user: bot })).toBe(false);
+    expect(isOwnReportComment({ id: 1, body: COMMENT_MARKER })).toBe(false);
+  });
+});
+
+describe("postOrUpdateComment — ownership and pagination", () => {
+  it("creates a new comment instead of editing a user's comment that carries the marker", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        okJson([
+          {
+            id: 13,
+            body: `${COMMENT_MARKER}\nRisk: Low`,
+            user: { login: "mallory", type: "User" },
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(okJson({ id: 14 })) as unknown as typeof fetch;
+
+    await postOrUpdateComment({
+      token: "t",
+      repository: "owner/repo",
+      prNumber: 3,
+      body: "report",
+      fetchFn,
+    });
+
+    const [url, opts] = (fetchFn as ReturnType<typeof vi.fn>).mock.calls[1];
+    expect(url).toBe(
+      "https://api.github.com/repos/owner/repo/issues/3/comments",
+    );
+    expect(opts.method).toBe("POST");
+  });
+
+  it("finds an existing report on a later page", async () => {
+    const filler = Array.from({ length: 100 }, (_, i) => ({
+      id: i + 1,
+      body: "chatter",
+      user: { login: "someone", type: "User" },
+    }));
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(okJson(filler))
+      .mockResolvedValueOnce(
+        okJson([
+          {
+            id: 500,
+            body: `${COMMENT_MARKER}\nold`,
+            user: { login: "github-actions[bot]", type: "Bot" },
+          },
+        ]),
+      )
+      .mockResolvedValueOnce(okJson({})) as unknown as typeof fetch;
+
+    await postOrUpdateComment({
+      token: "t",
+      repository: "owner/repo",
+      prNumber: 3,
+      body: "report",
+      fetchFn,
+    });
+
+    const calls = (fetchFn as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls[1][0]).toContain("page=2");
+    expect(calls[2][0]).toBe(
+      "https://api.github.com/repos/owner/repo/issues/comments/500",
+    );
+    expect(calls[2][1].method).toBe("PATCH");
+  });
+});
+
+describe("buildCommentBody — size limit", () => {
+  it("truncates reports that exceed GitHub's comment limit", () => {
+    const body = buildCommentBody("x".repeat(200_000));
+    expect(body.length).toBeLessThanOrEqual(65_000);
+    expect(body.startsWith(COMMENT_MARKER)).toBe(true);
+    expect(body).toContain("Report truncated");
   });
 });

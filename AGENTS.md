@@ -17,6 +17,7 @@ Read `docs/ARCHITECTURE.md` before large changes. Respect module boundaries:
 | `src/risk.ts`               | `buildReport` orchestrator — combines files + rules into a `ReviewReport`            |
 | `src/git.ts`                | `getChangedFiles` — shells out to `git diff --name-status` (no shell injection)      |
 | `src/config.ts`             | Config file auto-discovery, JSON parsing, Zod-free validation, `globToRegex`         |
+| `src/glob.ts`               | Linear-time glob matcher used for `ignore` and `extraRiskPaths`                      |
 | `src/github.ts`             | `postOrUpdateComment` — posts a PR comment via `fetch` (no Octokit)                  |
 | `src/types.ts`              | All shared TypeScript types and the `RISK_LEVEL_ORDER` constant                      |
 | `src/index.ts`              | Public API surface — re-exports types and functions for library consumers            |
@@ -92,7 +93,8 @@ A finding is emitted when a changed file's path matches a rule's pattern. The ov
 
 ## Safety boundaries
 
-- **No shell injection.** `git` is called via `execFileSync` with an array of arguments — never a shell string. Null-byte validation is applied to all ref inputs.
+- **No shell injection.** `git` is called via `execFileSync` with an array of arguments — never a shell string. Refs are validated (no leading `-`, no control characters) and passed after `--end-of-options`.
+- **Treat the reviewed repo as untrusted.** Config, file names, and diff content come from the pull request. Match globs with `src/glob.ts` (never build regexes from config), escape everything rendered to Markdown or text, and never let config weaken the review of its own changes.
 - **No secrets.** `GITHUB_TOKEN` is read from the environment and never logged or stored.
 - **No filesystem writes.** The tool only reads the git diff and writes to stdout/stderr.
 - **No network except `--github-comment`.** The GitHub comment feature is the only network path. It is silently skipped when environment variables (`GITHUB_TOKEN`, `GITHUB_REPOSITORY`, `GITHUB_EVENT_PATH`) are absent — safe for local runs.

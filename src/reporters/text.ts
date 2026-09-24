@@ -5,6 +5,7 @@ import {
   explainText,
   requiredReviewLabels,
   shouldExplain,
+  toSafeText,
   uniqueFindings,
 } from "./shared.js";
 
@@ -19,10 +20,10 @@ export function renderText(report: ReviewReport, opts: RenderOptions): string {
   } else {
     lines.push("Changed risky areas:");
     for (const f of unique) {
-      lines.push(`- ${f.file} — ${displayText(f)}`);
+      lines.push(`- ${toSafeText(f.file)} — ${toSafeText(displayText(f))}`);
       if (shouldExplain(opts)) {
         const explain = explainText(f);
-        if (explain) lines.push(`  explain: ${explain}`);
+        if (explain) lines.push(`  explain: ${toSafeText(explain)}`);
       }
     }
 
@@ -30,7 +31,7 @@ export function renderText(report: ReviewReport, opts: RenderOptions): string {
     if (reviewLabels.length > 0) {
       lines.push("Required human review:");
       for (const label of reviewLabels) {
-        lines.push(`- ${label}`);
+        lines.push(`- ${toSafeText(label)}`);
       }
     }
   }

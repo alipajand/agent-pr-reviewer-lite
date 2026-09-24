@@ -1,9 +1,10 @@
 import type { RenderOptions, ReviewReport } from "../types.js";
 import {
   capitalize,
-  displayText,
   escapeMarkdownCell,
   explainText,
+  markdownCodeCell,
+  markdownFindingText,
   requiredReviewLabels,
   shouldExplain,
   uniqueFindings,
@@ -32,8 +33,8 @@ export function renderMarkdown(
 
     for (const f of unique) {
       const severity = capitalize(f.severity);
-      const filePath = `\`${escapeMarkdownCell(f.file)}\``;
-      const finding = escapeMarkdownCell(displayText(f));
+      const filePath = markdownCodeCell(f.file);
+      const finding = markdownFindingText(f);
       const review = escapeMarkdownCell(f.requiredReview ?? "");
       if (shouldExplain(opts)) {
         const explain = escapeMarkdownCell(explainText(f) ?? "");
@@ -49,7 +50,7 @@ export function renderMarkdown(
     if (reviewLabels.length > 0) {
       lines.push("### Required human review");
       for (const label of reviewLabels) {
-        lines.push(`- ${label}`);
+        lines.push(`- ${escapeMarkdownCell(label)}`);
       }
     }
   }

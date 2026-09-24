@@ -950,3 +950,82 @@ describe("buildPresetRules", () => {
     expect(findings).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Renames and reviewer config
+// ---------------------------------------------------------------------------
+
+function renamed(previousPath: string, path: string): ChangedFile {
+  return { path, previousPath, status: "renamed" };
+}
+
+describe("renamed files", () => {
+  it("flags an auth file renamed to an innocuous path", () => {
+    expect(
+      hasRule(
+        [renamed("src/auth/session.ts", "src/misc/helpers.ts")],
+        "auth-file-touched",
+      ),
+    ).toBe(true);
+  });
+
+  it("reports a rename once when both paths match the same rule", () => {
+    const findings = applyRules(
+      [renamed("src/auth/a.ts", "src/auth/b.ts")],
+      DEFAULT_RULES,
+    ).filter((f) => f.id === "auth-file-touched");
+    expect(findings).toHaveLength(1);
+    expect(findings[0].file).toBe("src/auth/b.ts");
+  });
+
+  it("flags a test moved out of the test suite", () => {
+    const findings = applyRules(
+      [renamed("tests/auth.test.ts", "scratch/auth.ts")],
+      DEFAULT_RULES,
+    ).filter((f) => f.id === "test-deleted");
+    expect(findings).toHaveLength(1);
+    expect(findings[0].reason).toContain("moved out of the test suite");
+  });
+
+  it("does not flag a test renamed within the suite", () => {
+    expect(
+      hasRule([renamed("tests/a.test.ts", "tests/b.test.ts")], "test-deleted"),
+    ).toBe(false);
+  });
+});
+
+describe("reviewer-config-changed", () => {
+  it("flags the reviewer config at the repo root as high", () => {
+    expect(
+      hasRule(
+        [file("agent-pr-reviewer-lite.config.json")],
+        "reviewer-config-changed",
+        "high",
+      ),
+    ).toBe(true);
+  });
+
+  it("flags a nested or renamed reviewer config", () => {
+    expect(
+      hasRule(
+        [file("apps/web/agent-pr-reviewer-lite.config.json")],
+        "reviewer-config-changed",
+      ),
+    ).toBe(true);
+    expect(
+      hasRule(
+        [renamed("agent-pr-reviewer-lite.config.json", "old-config.json")],
+        "reviewer-config-changed",
+      ),
+    ).toBe(true);
+  });
+
+  it("does not flag similarly named files", () => {
+    expect(
+      hasRule(
+        [file("agent-pr-reviewer-lite.config.json.bak")],
+        "reviewer-config-changed",
+      ),
+    ).toBe(false);
+  });
+});

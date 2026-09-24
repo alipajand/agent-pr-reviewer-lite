@@ -162,7 +162,7 @@ describe("renderMarkdown — findings table", () => {
 
   it("uses reason as finding text for dependency-added (carries package name)", () => {
     const out = renderMarkdown(makeReport([depFinding], "medium"), mediumOpts);
-    expect(out).toContain("Added dependency: zod");
+    expect(out).toContain("Added dependency: `zod`");
     expect(out).not.toContain("New dependency added |");
   });
 
@@ -320,7 +320,7 @@ describe("renderMarkdown — exact output snapshot", () => {
         "|---|---|---|---|",
         "| High | `src/auth/session.ts` | Auth / session file touched | auth/session |",
         "| High | `supabase/migrations/20260604_add.sql` | Database migration changed | database migration |",
-        "| Medium | `package.json` | Added dependency: zod | dependency changes |",
+        "| Medium | `package.json` | Added dependency: `zod` | dependency changes |",
         "### Required human review",
         "- auth/session",
         "- database migration",
@@ -330,5 +330,53 @@ describe("renderMarkdown — exact output snapshot", () => {
         "- result: failed",
       ].join("\n"),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hostile file names and dependency names
+// ---------------------------------------------------------------------------
+
+describe("renderMarkdown — untrusted text", () => {
+  it("keeps a file name with backticks inside a single code span", () => {
+    const out = renderMarkdown(
+      makeReport([{ ...authFinding, file: "src/auth/`x` @everyone <b>.ts" }]),
+      failedOpts,
+    );
+    expect(out).toContain("| ``src/auth/`x` @everyone <b>.ts`` |");
+  });
+
+  it("renders dependency names as code so HTML and comments stay inert", () => {
+    const out = renderMarkdown(
+      makeReport([{ ...depFinding, reason: "Added dependency: <!--" }]),
+      failedOpts,
+    );
+    expect(out).toContain("Added dependency: `<!--`");
+    expect(out.split("\n").some((l) => l.startsWith("<!--"))).toBe(false);
+  });
+
+  it("escapes HTML in labels and review names", () => {
+    const out = renderMarkdown(
+      makeReport([
+        {
+          ...authFinding,
+          label: "<img src=x>",
+          requiredReview: "<!-- hide -->",
+        },
+      ]),
+      failedOpts,
+    );
+    expect(out).toContain("&lt;img src=x&gt;");
+    expect(out).toContain("- &lt;!-- hide --&gt;");
+    expect(out).not.toContain("<img");
+  });
+
+  it("flattens newlines in file names so rows stay intact", () => {
+    const out = renderMarkdown(
+      makeReport([{ ...authFinding, file: "src/auth/a\n| High | fake |" }]),
+      failedOpts,
+    );
+    const rows = out.split("\n").filter((l) => l.startsWith("| High"));
+    expect(rows).toHaveLength(1);
   });
 });
