@@ -1,3 +1,4 @@
+export { VERSION } from "./version.js";
 export {
   getChangedFiles,
   getChangedFilesFromInput,

@@ -9,6 +9,8 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-09-24
+
 ### Added
 
 - `agent-local-settings-committed` (high): `.claude/settings.local.json` or `CLAUDE.local.md` added or modified. These personal files override the shared settings and instructions, so committing them applies one person's permissions to everyone.
@@ -42,6 +44,8 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The ledgerguard example installed `agent-pr-reviewer-lite@^0.1.0` from npm, where nobody owns that name. It now installs from GitHub pinned to a commit.
+- SARIF output includes the tool `version` and `informationUri`. `--version` and SARIF share one `VERSION` constant.
 - The repository's own PR risk workflow ran `pnpm agent-pr-reviewer-lite`, which does not resolve inside this package, so every pull request failed the check. It now builds and runs `dist/cli.js`.
 - Existing report comments are found on PRs with more than 30 comments (the API is now paginated), and oversized reports are truncated to fit GitHub's comment limit.
 

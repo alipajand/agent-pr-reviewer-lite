@@ -22,6 +22,7 @@ import { renderSarif } from "./reporters/sarif.js";
 import { renderJunit } from "./reporters/junit.js";
 import { renderGithub } from "./reporters/github.js";
 import { loadCodeowners, ownersFor } from "./codeowners.js";
+import { VERSION } from "./version.js";
 import type {
   ChangedFile,
   CliOptions,
@@ -135,7 +136,7 @@ export async function run(argv: string[] = process.argv): Promise<void> {
         "(auth, billing, migrations, security, lockfiles, etc.) using built-in rules\n" +
         "and optional config-file rules. No LLM. No external API. Works offline.",
     )
-    .version("0.1.0")
+    .version(VERSION)
     .option(
       "--config <path>",
       "Path to config JSON file. When omitted, the tool looks for\n" +
