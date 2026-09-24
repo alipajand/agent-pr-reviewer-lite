@@ -73,6 +73,8 @@ export function shouldFail(overallRisk: RiskLevel, failOn: RiskLevel): boolean {
 | `reviewer-config-changed`        | **high** | A PR could weaken its own review (`ignore`, `base`)          |
 | `ci-workflow-changed`            | **high** | Pipelines hold secrets and decide which checks run           |
 | `agent-permissions-changed`      | **high** | Controls which tools and MCP servers agents use unprompted   |
+| `agent-local-settings-committed` | **high** | Personal settings override the shared ones for everyone      |
+| `agent-auto-run-added`           | **high** | Commands that run shell or skip prompts act without asking   |
 | `codeowners-changed`             | **high** | Decides who must approve changes                             |
 | `secret-material-committed`      | **high** | Keys, credentials, or infra state must not be committed      |
 | `test-skipped`                   | **high** | Skipping or focusing tests hides failures from CI            |

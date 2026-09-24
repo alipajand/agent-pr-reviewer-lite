@@ -213,9 +213,11 @@ const CI_PATHS = [
   /^\.drone\.ya?ml$/,
 ];
 
-// Settings that change what an AI agent may do without asking.
+// Settings that change what an AI agent may do without asking, and hook
+// scripts those settings run automatically.
 const AGENT_PERMISSION_PATHS = [
-  /^\.claude\/settings(?:\.local)?\.json$/,
+  /^\.claude\/settings\.json$/,
+  /^\.claude\/hooks\//,
   /(?:^|\/)\.mcp\.json$/,
   /^\.cursor\/mcp\.json$/,
   /^\.vscode\/mcp\.json$/,
@@ -231,7 +233,7 @@ const AGENT_INSTRUCTION_PATHS = [
   /^\.cursor\/rules\//,
   /^\.github\/copilot-instructions\.md$/,
   /^\.github\/(?:instructions|prompts|chatmodes|agents)\//,
-  /^\.claude\/(?:CLAUDE\.md$|commands\/|agents\/|skills\/)/,
+  /^\.claude\/(?:CLAUDE\.md$|commands\/|agents\/|skills\/|rules\/|output-styles\/)/,
   /^\.windsurfrules$/,
   /^\.windsurf\/rules\//,
   /^\.clinerules(?:\/|$)/,
@@ -241,6 +243,73 @@ const AGENT_INSTRUCTION_PATHS = [
   /^\.goosehints$/,
   /^\.continue\/rules\//,
 ];
+
+// Personal Claude Code files. They take precedence over the shared ones and
+// are meant to stay on one machine.
+const AGENT_LOCAL_PATHS = [
+  /(?:^|\/)\.claude\/settings\.local\.json$/,
+  /(?:^|\/)CLAUDE\.local\.md$/,
+];
+
+// Commands, skills, and subagents that run or approve things on their own.
+const AGENT_COMMAND_PATHS = [/^\.claude\/(?:commands|skills)\/.+\.md$/];
+const AGENT_SUBAGENT_PATHS = [/^\.claude\/agents\/.+\.md$/];
+
+const AGENT_AUTO_RUN_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+  { pattern: /!`[^`\n]+`/, label: "runs a shell command when invoked" },
+  { pattern: /^\s*```!\s*$/, label: "runs a shell block when invoked" },
+  {
+    pattern:
+      /^allowed-tools\s*:.*(?:^|[\s,[:"'])Bash(?:\((?:\*|:\*)?\))?(?=$|[\s,\]"'])/,
+    label: "pre-approves any shell command",
+  },
+  {
+    pattern: /^permissionMode\s*:\s*["']?bypassPermissions/,
+    label: "skips every permission prompt",
+  },
+];
+
+// Keys whose addition to agent settings deserves a closer look.
+const RISKY_AGENT_SETTINGS: Array<{ pattern: RegExp; label: string }> = [
+  {
+    pattern: /"defaultMode"\s*:\s*"bypassPermissions"/,
+    label: "bypassPermissions",
+  },
+  { pattern: /"Bash(?:\((?:\*|:\*)?\))?"/, label: "unrestricted Bash" },
+  { pattern: /"hooks"\s*:/, label: "hooks" },
+  { pattern: /"statusLine"\s*:/, label: "a status line command" },
+  {
+    pattern:
+      /"(?:apiKeyHelper|awsCredentialExport|awsAuthRefresh|gcpAuthRefresh|otelHeadersHelper|headersHelper)"\s*:/,
+    label: "a credential helper",
+  },
+  {
+    pattern: /ANTHROPIC_(?:BEDROCK_|VERTEX_)?BASE_URL|"(?:HTTPS?|ALL)_PROXY"/i,
+    label: "an API endpoint or proxy override",
+  },
+  {
+    pattern: /"enableAllProjectMcpServers"\s*:\s*true/,
+    label: "auto-approved MCP servers",
+  },
+  { pattern: /"additionalDirectories"\s*:/, label: "extra directories" },
+];
+
+function riskyAgentSettings(addedLines: string[] | undefined): string[] {
+  const labels = new Set<string>();
+  for (const line of addedLines ?? []) {
+    for (const { pattern, label } of RISKY_AGENT_SETTINGS) {
+      if (pattern.test(line)) labels.add(label);
+    }
+    // Two separate tests instead of one pattern keep this linear on long lines.
+    if (
+      /\b(?:curl|wget)\b/.test(line) &&
+      /\|\s*(?:sudo\s+)?(?:ba|z)?sh\b/.test(line)
+    ) {
+      labels.add("a command that pipes a download into a shell");
+    }
+  }
+  return [...labels];
+}
 
 const CODEOWNERS_PATHS = [
   /^(?:\.github\/|docs\/)?CODEOWNERS$/,
@@ -517,9 +586,54 @@ export const DEFAULT_RULES: Rule[] = [
     severity: "high",
     requiredReview: "agent permissions",
     patterns: AGENT_PERMISSION_PATHS,
-    reason: (file) =>
-      `Agent configuration '${file.path}' was ${file.status} — it controls which tools and MCP servers agents may use without asking`,
+    reason: (file) => {
+      if (file.path.startsWith(".claude/hooks/")) {
+        return `Agent hook script '${file.path}' was ${file.status} — hooks run automatically on agent events, on every contributor's machine`;
+      }
+      const risky = riskyAgentSettings(file.addedLines);
+      const adds = risky.length > 0 ? `; adds ${risky.join(", ")}` : "";
+      return `Agent configuration '${file.path}' was ${file.status} — it controls which tools and MCP servers agents may use without asking${adds}`;
+    },
   }),
+
+  pathRule({
+    id: "agent-local-settings-committed",
+    label: "Personal agent settings committed",
+    severity: "high",
+    requiredReview: "agent permissions",
+    patterns: AGENT_LOCAL_PATHS,
+    statuses: ["added", "modified", "renamed"],
+    reason: (file) =>
+      file.path.endsWith(".md")
+        ? `'${file.path}' holds one person's Claude Code instructions — committed, it is loaded for everyone and is easy to miss in review`
+        : `'${file.path}' holds one person's Claude Code permissions — committed, they override the shared settings for everyone`,
+  }),
+
+  {
+    id: "agent-auto-run-added",
+    label: "Agent command runs or pre-approves commands",
+    severity: "high",
+    requiredReview: "agent permissions",
+    match(file) {
+      if (!file.addedLines) return null;
+      const isCommand = matchesAny(file.path, AGENT_COMMAND_PATHS);
+      if (!isCommand && !matchesAny(file.path, AGENT_SUBAGENT_PATHS))
+        return null;
+      const patterns = AGENT_AUTO_RUN_PATTERNS.filter(
+        ({ label }) => isCommand !== label.startsWith("skips"),
+      );
+      for (const line of file.addedLines) {
+        const hit = patterns.find(({ pattern }) => pattern.test(line));
+        if (hit) {
+          return {
+            reason: `'${file.path}' ${hit.label}, without a permission prompt: ${excerpt(line)}`,
+            explain: `Matched an added line against ${hit.pattern.toString()}`,
+          };
+        }
+      }
+      return null;
+    },
+  },
 
   pathRule({
     id: "codeowners-changed",
