@@ -18,8 +18,8 @@ This directory contains a ready-to-use, strict configuration of `agent-pr-review
 ### 1. Install as a dev dependency
 
 ```bash
-# in the LedgerGuard repository root, pinned to a reviewed commit
-pnpm add -D github:alipajand/agent-pr-reviewer-lite#<commit-sha>
+# in the LedgerGuard repository root, pinned to a release
+pnpm add -D github:alipajand/agent-pr-reviewer-lite#v1.0.0
 ```
 
 ### 2. Copy the config file
@@ -32,7 +32,7 @@ The tool auto-discovers `agent-pr-reviewer-lite.config.json` in the working dire
 
 ### 3. Add the package script
 
-Add this to `package.json`. `package.json.snippet` in this directory has the full snippet, including the devDependency: it installs the CLI from GitHub pinned to a commit (replace `<commit-sha>`), because the name is not published on npm.
+Add this to `package.json`. `package.json.snippet` in this directory has the full snippet, including the devDependency: it installs the CLI from GitHub at the `v1.0.0` release, because the name is not published on npm.
 
 ```json
 {
