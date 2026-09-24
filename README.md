@@ -38,13 +38,13 @@ Agent-generated PRs often touch many files across many directories. A determinis
 
 ## Quick start
 
-`agent-pr-reviewer-lite` is not published to npm yet, and nobody owns that name there. Until it is published by this project, do not install it from the npm registry: a package someone else registers under that name would run in your CI. Install from GitHub instead, pinned to a commit you have reviewed (the CLI is built during install):
+`agent-pr-reviewer-lite` is not published to npm yet, and nobody owns that name there. Until it is published by this project, do not install it from the npm registry: a package someone else registers under that name would run in your CI. Install a release from GitHub instead (the CLI is built during install). Tags can be moved, so in CI you can pin the tag's commit SHA for an exact, reviewed version:
 
 ```bash
 # Add to a project
-pnpm add -D github:alipajand/agent-pr-reviewer-lite#<commit-sha>
+pnpm add -D github:alipajand/agent-pr-reviewer-lite#v1.0.0
 # or globally:
-npm install -g github:alipajand/agent-pr-reviewer-lite#<commit-sha>
+npm install -g github:alipajand/agent-pr-reviewer-lite#v1.0.0
 
 # Run against main
 agent-pr-reviewer-lite --base main
