@@ -58,7 +58,7 @@
     "@types/node": "^25.9.5",
     "@vitest/coverage-v8": "^4.1.8",
     "esbuild": "0.28.2",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.8",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",
