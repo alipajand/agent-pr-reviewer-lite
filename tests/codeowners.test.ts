@@ -60,3 +60,22 @@ describe("codeownersGlobs", () => {
     expect(codeownersGlobs(pattern)).toEqual(globs);
   });
 });
+
+describe("CODEOWNERS comment handling", () => {
+  it("strips comments that start a line or follow whitespace", () => {
+    const rules = parseCodeowners(
+      "# header\n/docs/ @docs # trailing\n/a#b/ @hash\n",
+    );
+    expect(rules.map((r) => [r.pattern, r.owners])).toEqual([
+      ["/docs/", ["@docs"]],
+      ["/a#b/", ["@hash"]],
+    ]);
+  });
+
+  it("stays fast on hostile comment input", () => {
+    const line = " # ".repeat(50_000);
+    const start = Date.now();
+    parseCodeowners(line);
+    expect(Date.now() - start).toBeLessThan(1000);
+  });
+});

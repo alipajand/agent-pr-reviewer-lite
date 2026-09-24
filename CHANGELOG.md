@@ -19,7 +19,7 @@ This project uses [Semantic Versioning](https://semver.org/).
 - `--config-ref <ref>`: read the config from a trusted git ref (for example `origin/main`) instead of the pull request's checkout, so a PR cannot change the settings that review it.
 - `rules` in the config: turn a rule `"off"` or set its severity. Unknown rule IDs are rejected, and `reviewer-config-changed` cannot be turned off or downgraded.
 - `--format github`: GitHub Actions workflow annotations, one per finding on the changed file, with escaping so file names cannot inject commands.
-- `test-skipped` (high): added lines in test files that skip or focus tests (`it.skip`, `.only`, `xit`, `fdescribe`, `test.fixme`, `pytest.mark.skip`/`xfail`, `t.Skip`, `@Disabled`, `#[ignore]`).
+- `test-skipped` (high): added lines in test files that skip or focus tests (`it.skip`, `.only`, `xit`, `fdescribe`, `test.fixme`, `pytest.mark.skip`/`xfail`, `t.Skip`, `@Disabled`, `#[ignore]`). Conditional skips whose only condition is the platform (`process.platform`, `os.platform()`, `sys.platform`, `os.name`) are not reported.
 - `lint-suppression-added` (medium): added lint, type-check, or coverage suppressions in non-test files.
 - `dependency-added` covers every `package.json` in the change, not only the root one.
 - `ci-workflow-changed` (high): GitHub Actions workflows and actions, GitLab CI, CircleCI, Jenkins, Azure Pipelines, Buildkite, Travis, and Drone config.
@@ -47,6 +47,9 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ### Security
 
+- The config file and CODEOWNERS are checked for type and size on the opened descriptor, not the path, and opened non-blocking, so a file cannot be swapped for a FIFO or a larger file between the check and the read.
+- CODEOWNERS comments are stripped without a regular expression that could take quadratic time on crafted lines.
+- Markdown code cells double a backslash run before `|`, so a backslash in a file name cannot cancel the escaped pipe and split the table cell.
 - `--base`/`--head` values (including `base` from the config file) that start with `-` are rejected, and git gets `--end-of-options`. Previously a config file in the reviewed PR could set `base` to `--output=<path>` and make `git diff` write to an arbitrary file.
 - Changed files are read with `git diff -z`. Previously git quoted non-ASCII paths (`"supabase/migrations/\303\274.sql"`), so anchored rules such as `migration-changed` silently missed them.
 - Renames no longer bypass path rules, and moving a test out of the suite is no longer a silent way to delete it.

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -137,7 +137,7 @@ describe("readEventPayload", () => {
   afterEach(() => {
     for (const f of created.splice(0)) {
       try {
-        rmSync(f, { force: true });
+        rmSync(f, { recursive: true, force: true });
       } catch {
         // best-effort
       }
@@ -145,12 +145,10 @@ describe("readEventPayload", () => {
   });
 
   function writeEvent(content: string): string {
-    const path = join(
-      tmpdir(),
-      `apr-event-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
-    );
+    const dir = mkdtempSync(join(tmpdir(), "apr-event-"));
+    const path = join(dir, "event.json");
     writeFileSync(path, content, "utf8");
-    created.push(path);
+    created.push(dir);
     return path;
   }
 
@@ -453,7 +451,10 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
   });
 
   it("does nothing when event payload has no pull_request", async () => {
-    const eventFile = join(tmpdir(), `event-${Date.now()}.json`);
+    const eventFile = join(
+      mkdtempSync(join(tmpdir(), "apr-event-")),
+      "event.json",
+    );
     writeFileSync(eventFile, JSON.stringify({ ref: "refs/heads/main" }));
     process.env.GITHUB_TOKEN = "tok";
     process.env.GITHUB_REPOSITORY = "owner/repo";
@@ -464,7 +465,10 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
   });
 
   it("skips and warns when GITHUB_REPOSITORY is not in owner/repo format", async () => {
-    const eventFile = join(tmpdir(), `event-${Date.now()}.json`);
+    const eventFile = join(
+      mkdtempSync(join(tmpdir(), "apr-event-")),
+      "event.json",
+    );
     writeFileSync(eventFile, JSON.stringify({ pull_request: { number: 5 } }));
     process.env.GITHUB_TOKEN = "tok";
     process.env.GITHUB_REPOSITORY = "not-a-valid-repo-format";
@@ -486,7 +490,10 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
   });
 
   it("skips and warns when GITHUB_REPOSITORY has too many slashes", async () => {
-    const eventFile = join(tmpdir(), `event-${Date.now()}.json`);
+    const eventFile = join(
+      mkdtempSync(join(tmpdir(), "apr-event-")),
+      "event.json",
+    );
     writeFileSync(eventFile, JSON.stringify({ pull_request: { number: 5 } }));
     process.env.GITHUB_TOKEN = "tok";
     process.env.GITHUB_REPOSITORY = "owner/repo/extra";
@@ -505,7 +512,10 @@ describe("tryPostGitHubComment — prerequisite checks", () => {
   });
 
   it("calls postOrUpdateComment when all prerequisites are satisfied", async () => {
-    const eventFile = join(tmpdir(), `event-${Date.now()}.json`);
+    const eventFile = join(
+      mkdtempSync(join(tmpdir(), "apr-event-")),
+      "event.json",
+    );
     writeFileSync(eventFile, JSON.stringify({ pull_request: { number: 12 } }));
     process.env.GITHUB_TOKEN = "ghs_token";
     process.env.GITHUB_REPOSITORY = "owner/repo";
