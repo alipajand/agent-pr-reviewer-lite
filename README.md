@@ -6,18 +6,18 @@ It is part of a suite of tools that help maintainers make repositories safer and
 
 ## What it is
 
-`agent-pr-reviewer-lite` scans the git diff between two refs and applies a fixed set of deterministic rules to flag files in risk-sensitive areas: authentication, billing, database migrations, security policies, lockfiles, generated files, and more.
+`agent-pr-reviewer-lite` scans the git diff between two refs and applies a fixed set of deterministic rules to flag files in risk-sensitive areas: authentication, billing, database migrations, security policies, CI pipelines, AI agent permissions and instructions, committed keys, lockfiles, generated files, and more. It also reads the added lines to catch skipped or focused tests, lint suppressions, new dependencies, and agent commands that run shell without asking. Each finding lists the file's CODEOWNERS owners, read from the base branch.
 
 It answers one question:
 
 > **Did this PR touch areas that deserve human review before merge?**
 
-It outputs human-readable **text** and **Markdown** reports plus machine-readable **JSON**, **SARIF**, and **JUnit XML**. It exits non-zero when the risk level meets or exceeds a configurable threshold, making it suitable as a CI gate.
+It outputs human-readable **text** and **Markdown** reports, machine-readable **JSON**, **SARIF**, and **JUnit XML**, and **GitHub annotations** on the pull request. It exits non-zero when the risk level meets or exceeds a configurable threshold, making it suitable as a CI gate.
 
 What it is **not**:
 
 - It is **not** an AI code reviewer.
-- It does **not** understand code semantics — it matches file paths and `package.json` content against fixed patterns.
+- It does **not** understand code semantics — it matches file paths and added lines against fixed patterns.
 - It does **not** replace human review.
 - It is **conservative by design**: it would rather flag a safe file than miss a risky one.
 
