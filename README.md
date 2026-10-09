@@ -1,5 +1,12 @@
 # agent-pr-reviewer-lite
 
+[![version](https://img.shields.io/github/v/release/alipajand/agent-pr-reviewer-lite?label=version&color=blue)](https://github.com/alipajand/agent-pr-reviewer-lite/releases)
+[![tests](https://img.shields.io/badge/tests-619%20passing-brightgreen)](https://github.com/alipajand/agent-pr-reviewer-lite/actions/workflows/ci.yml)
+[![coverage](https://img.shields.io/badge/coverage-96%25-brightgreen)](https://github.com/alipajand/agent-pr-reviewer-lite/actions/workflows/ci.yml)
+[![CI](https://github.com/alipajand/agent-pr-reviewer-lite/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/alipajand/agent-pr-reviewer-lite/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/alipajand/agent-pr-reviewer-lite/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/alipajand/agent-pr-reviewer-lite/actions/workflows/codeql.yml)
+[![license](https://img.shields.io/github/license/alipajand/agent-pr-reviewer-lite?color=blue)](LICENSE)
+
 `agent-pr-reviewer-lite` checks a git diff and flags files that deserve human review before merge. It is deterministic, local-first, and intentionally conservative.
 
 It is part of a suite of tools that help maintainers make repositories safer and easier for AI coding agents to work in. These tools are deterministic, local-first, open source, and designed to complement human review — not replace it.
