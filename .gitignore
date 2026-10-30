@@ -14,3 +14,4 @@ coverage/
 # Personal Claude Code settings and notes
 .claude/settings.local.json
 CLAUDE.local.md
+.ark-history.json

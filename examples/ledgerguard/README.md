@@ -4,15 +4,6 @@ This directory contains a ready-to-use, strict configuration of `agent-pr-review
 
 ---
 
-## Installation status
-
-> **TODO — package not yet published.**
->
-> `agent-pr-reviewer-lite` has not been released to the npm registry yet.
-> Once it is published, follow the steps below to integrate it into LedgerGuard.
-
----
-
 ## Integration steps
 
 ### 1. Install as a dev dependency
