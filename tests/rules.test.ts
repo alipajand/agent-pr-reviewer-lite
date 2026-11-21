@@ -734,6 +734,27 @@ describe("pricing-copy-changed", () => {
     );
   });
 
+  it.each([
+    "apps/web/pricing/page.tsx",
+    "app/plans/page.tsx",
+    "src/plans.ts",
+    "src/billing/user_plans.ts",
+    "content/plans-faq.md",
+  ])("triggers on %s", (path) => {
+    expect(hasRule([file(path)], "pricing-copy-changed", "medium")).toBe(true);
+  });
+
+  it.each([
+    "src/plan.mjs",
+    "plan/action.yml",
+    "test/plan.test.mjs",
+    "src/planner.ts",
+    "docs/planning.md",
+    "docs/explanations.md",
+  ])("does NOT trigger on %s", (path) => {
+    expect(hasRule([file(path)], "pricing-copy-changed")).toBe(false);
+  });
+
   it("has requiredReview label 'pricing/public copy'", () => {
     const findings = applyRules([file("src/pricing/index.tsx")], DEFAULT_RULES);
     const f = findings.find((x) => x.id === "pricing-copy-changed");
