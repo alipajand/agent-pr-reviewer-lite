@@ -45,20 +45,30 @@ Agent-generated PRs often touch many files across many directories. A determinis
 
 ## Quick start
 
-`agent-pr-reviewer-lite` is not published to npm yet, and nobody owns that name there. Until it is published by this project, do not install it from the npm registry: a package someone else registers under that name would run in your CI. Install a release from GitHub instead (the CLI is built during install). Tags can be moved, so in CI you can pin the tag's commit SHA for an exact, reviewed version:
+`agent-pr-reviewer-lite` is not published to npm yet, and nobody owns that name there. Until it is published by this project, do not install it from the npm registry: a package someone else registers under that name would run in your CI. Run a release from GitHub instead (the CLI is built during install), pinned to the release's commit SHA, because tags can be moved. `71965e4dec2bd54075e0620a8b3be0622fba4666` is `v1.0.0`.
 
 ```bash
-# Add to a project
-pnpm add -D github:alipajand/agent-pr-reviewer-lite#v1.0.0
-# or globally:
-npm install -g github:alipajand/agent-pr-reviewer-lite#v1.0.0
-
-# Run against main
-agent-pr-reviewer-lite --base main
+# Run against main (works on npm 11 and npm 12)
+npx --yes --allow-git=all \
+  --package=github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666 \
+  -- agent-pr-reviewer-lite --base main
 
 # Fail CI if risk is high or above (the default)
-agent-pr-reviewer-lite --base origin/main --head HEAD --fail-on high
+npx --yes --allow-git=all \
+  --package=github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666 \
+  -- agent-pr-reviewer-lite --base origin/main --head HEAD --fail-on high
 ```
+
+- `--allow-git=all` is required on npm 12, which refuses packages fetched from git by default (`EALLOWGIT: Fetching packages of type "git" have been disabled`). npm 11 accepts the flag too. Use npm 11 or later (Node 24 ships npm 11): npm 10, the default on Node 22, exits with code 1 and no message when `npx` runs a package from git.
+- Prefer `npx` to `npm install -g`. On npm 11, a global install from git fails while building the CLI: npm runs the `prepare` build as another global install, so TypeScript and `@types/node` are never installed and the build stops with `tsc: command not found` or `TS2688: Cannot find type definition file for 'node'`. On npm 12, `npm install -g --allow-git=all github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666` works.
+- To add it to a project with pnpm, run `pnpm add -D github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666`. pnpm 11 and later skip the build of a git package until you allow it in `pnpm-workspace.yaml`, so add the entry pnpm prints:
+
+  ```yaml
+  allowBuilds:
+    "agent-pr-reviewer-lite@https://codeload.github.com/alipajand/agent-pr-reviewer-lite/tar.gz/71965e4dec2bd54075e0620a8b3be0622fba4666": true
+  ```
+
+  Then run it with `pnpm agent-pr-reviewer-lite --base main`.
 
 No config file is required. The tool runs with sensible defaults.
 
@@ -284,17 +294,15 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: pnpm/action-setup@v6
-
       - uses: actions/setup-node@v7
         with:
-          node-version: "22"
-
-      - run: pnpm install --frozen-lockfile
+          node-version: "24"
 
       - name: Run agent-pr-reviewer-lite
         run: |
-          pnpm agent-pr-reviewer-lite \
+          npx --yes --allow-git=all \
+            --package=github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666 \
+            -- agent-pr-reviewer-lite \
             --base "origin/${BASE_REF}" \
             --head HEAD \
             --format markdown \
@@ -346,7 +354,7 @@ All built-in rules are deterministic regex pattern matches. No ML, no heuristics
 | `package-lock-changed`           | **Medium** | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`                                                                                                                                                                                                                                                                                                                  |
 | `generated-file-edited`          | **Medium** | Paths containing `generated/`, `__generated__/`, `.generated.ts`, `.gen.ts`                                                                                                                                                                                                                                                                                                      |
 | `public-route-changed`           | **Medium** | Next.js `app/**/page.tsx`, `app/**/layout.tsx`, `pages/**` (src/ variants too)                                                                                                                                                                                                                                                                                                   |
-| `pricing-copy-changed`           | **Medium** | Files matching `pricing`, `plans`, `checkout`, `subscription`, `billing`, `marketing`, `landing`                                                                                                                                                                                                                                                                                 |
+| `pricing-copy-changed`           | **Medium** | Paths containing `pricing`, `checkout`, `subscription`, `billing`, `marketing`, `landing`, or the whole word `plans` (`app/plans/`, `Plans.tsx`; not `plan.ts` or `planner.ts`)                                                                                                                                                                                                  |
 | `agent-instructions-changed`     | **Medium** | `AGENTS.md`/`CLAUDE.md`/`GEMINI.md` (any depth), Cursor rules, Copilot instructions and prompts, Claude commands/agents/skills/rules/output styles, Windsurf, Cline, Roo, Kiro, Junie, Goose, Continue rules                                                                                                                                                                     |
 | `infra-changed`                  | **Medium** | Terraform, Kubernetes/Helm/Kustomize, Dockerfiles, Compose files, Vercel/Netlify/Fly/Render/Railway/Firebase/Wrangler/CDK/Pulumi config                                                                                                                                                                                                                                          |
 | `package-manager-config-changed` | **Medium** | `.npmrc`, `.yarnrc(.yml)`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `bunfig.toml`, `pip.conf`, `.pypirc`                                                                                                                                                                                                                                                                          |
