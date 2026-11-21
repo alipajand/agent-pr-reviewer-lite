@@ -4,7 +4,7 @@
 
 ## Quick start
 
-Copy `.github/workflows/agent-pr-risk.yml` from this repository into your own project, or create it manually:
+Create `.github/workflows/agent-pr-risk.yml` in your project. (This repository's own `agent-pr-risk.yml` runs the CLI it just built, so it does not work elsewhere.)
 
 ```yaml
 name: Agent PR Risk Check
@@ -30,22 +30,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v6
-
-      - name: Set up Node.js 22
+      - name: Set up Node.js 24
         uses: actions/setup-node@v7
         with:
-          node-version: "22"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+          node-version: "24"
 
       - name: Run agent-pr-reviewer-lite
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          pnpm agent-pr-reviewer-lite \
+          npx --yes --allow-git=all \
+            --package=github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666 \
+            -- agent-pr-reviewer-lite \
             --base "origin/${BASE_REF}" \
             --head HEAD \
             --config-ref "origin/${BASE_REF}" \
@@ -56,6 +52,10 @@ jobs:
 `--config-ref` reads `agent-pr-reviewer-lite.config.json` from the base branch, so the pull request cannot change the rules that review it. `--format github` turns each finding into an annotation on the changed file.
 
 Pass `github.base_ref` through an environment variable rather than interpolating `${{ }}` into the script, and always pass `--base`: the config file comes from the pull request's own checkout.
+
+`npx` runs the CLI from GitHub, pinned to the `v1.0.0` commit, without adding it to your dependencies. `--allow-git=all` is required on npm 12, which refuses git packages by default (`EALLOWGIT`), and Node 24 brings npm 11: npm 10 on Node 22 cannot run a git package with `npx`. See the [README](../README.md#quick-start) for why `npm install -g` from git fails on npm 11.
+
+The examples below call `pnpm agent-pr-reviewer-lite`, for projects that add the CLI as a dev dependency (`pnpm add -D github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666`, plus the `allowBuilds` entry from the README). Without the dev dependency, use the `npx` command above in its place.
 
 ## PR comment mode
 
