@@ -187,9 +187,12 @@ const PUBLIC_ROUTE_PATHS = [
 export const REVIEWER_CONFIG_PATH =
   /(?:^|\/)agent-pr-reviewer-lite\.config\.json$/;
 
+// `plans` must be a whole word in the path (`app/plans/`, `Plans.tsx`,
+// `user_plans.ts`): the singular `plan` names unrelated code such as
+// `src/plan.ts` or a CI `plan/action.yml`.
 const PRICING_COPY_PATHS = [
   /pricing/i,
-  /\bplans?\b/i,
+  /(?<![a-z0-9])plans(?![a-z0-9])/i,
   /checkout/i,
   /subscription/i,
   /billing/i,

@@ -9,6 +9,11 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `pricing-copy-changed` no longer matches the word `plan`, so files such as `src/plan.mjs`, `plan/action.yml`, and `test/plan.test.mjs` are not reported as pricing copy. `plans` still matches when it is a whole word in the path (`app/plans/page.tsx`, `Plans.tsx`, `user_plans.ts`).
+- Install docs work on npm 12, which refuses git packages unless `--allow-git=all` is passed. The README and GitHub Actions guide run the CLI with `npx --yes --allow-git=all --package=github:alipajand/agent-pr-reviewer-lite#<sha>`, pin the release commit SHA, explain why `npm install -g` from git fails on npm 11, and add the `allowBuilds` entry pnpm 11 and later need to build it.
+
 ## [1.0.0] — 2026-09-24
 
 ### Added

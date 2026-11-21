@@ -4,7 +4,7 @@
 #   1. Install agent-pr-reviewer-lite from GitHub, pinned to a release
 #      (it is not on npm yet, so do not install that name from the registry):
 #   2. Add it as a dev dependency:
-#        pnpm add -D github:alipajand/agent-pr-reviewer-lite#v1.0.0
+#        pnpm add -D github:alipajand/agent-pr-reviewer-lite#71965e4dec2bd54075e0620a8b3be0622fba4666
 #   3. Copy examples/ledgerguard/agent-pr-reviewer-lite.config.json to the repo root.
 #   4. Add the pr:risk script to package.json (see examples/ledgerguard/package.json.snippet).
 
